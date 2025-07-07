@@ -1,0 +1,11 @@
+-- VALIDAÇÃO 3
+-- Verifica a descrição do motivo de alteração do ponto se contém mais que 30 caracteres
+
+select i_motivos_altponto,
+       length(descricao) as tamanho_descricao
+  from bethadba.motivos_altponto 
+ where tamanho_descricao > 30;
+
+
+-- CORREÇÃO
+
