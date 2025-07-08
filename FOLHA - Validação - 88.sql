@@ -9,7 +9,7 @@ select dependentes.i_pessoas as pessoa,
   	   bethadba.pessoas_fisicas
  where dependentes.i_dependentes = pessoas_fisicas.i_pessoas
    and dependentes.dt_ini_depende is not null
-   or dependentes.dt_ini_depende < pessoas_fisicas.dt_nascimento;
+   and dependentes.dt_ini_depende < pessoas_fisicas.dt_nascimento;
 
 
 -- CORREÇÃO

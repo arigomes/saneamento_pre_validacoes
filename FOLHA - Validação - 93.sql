@@ -1,7 +1,5 @@
-/*
- * VALIDA��O 93
- * Hist�ricos na matricula posterior a data de cessa��o da aposentadoria
- */
+-- VALIDAÇÃO 93
+-- Históricos na matricula posterior a data de cessação da aposentadoria
 
 /* RODAR VARIAS VEZES */
 select distinct funcionarios.i_entidades as chave_dsk1,
@@ -54,17 +52,31 @@ select distinct funcionarios.i_entidades as chave_dsk1,
     	    and tipos_afast.classif = 9
     	    and datacessacaoaposentadoria < dataalteracao;
 
-/*
- * CORRE��O
- */
 
+-- CORREÇÃO
+-- Exclui os registros de histórico de funcionários e de histórico de funcionários com proventos adicionais
+-- que estejam com data de alteração posterior a data de cessação da aposentadoria
 
 delete from bethadba.hist_funcionarios
-where i_funcionarios in (3)
-and dt_alteracoes >= '2020-07-08'
-and i_entidades = 1
-
-delete from bethadba.hist_funcionarios_prop_adic 
-where i_funcionarios = 3
-and dt_alteracoes >= '2020-07-08'
-and i_entidades = 1
+ where exists (select 1
+				 from bethadba.funcionarios f
+				 join bethadba.rescisoes r
+				   on f.i_entidades = r.i_entidades
+				  and f.i_funcionarios = r.i_funcionarios
+				 join bethadba.motivos_resc mr
+				   on r.i_motivos_resc = mr.i_motivos_resc
+				 join bethadba.motivos_apos ma
+				   on r.i_motivos_apos = ma.i_motivos_apos
+				 join bethadba.tipos_afast ta
+				   on ma.i_tipos_afast = ta.i_tipos_afast
+				where ta.classif = 9
+				  and f.i_entidades = hist_funcionarios.i_entidades
+				  and f.i_funcionarios = hist_funcionarios.i_funcionarios
+				  and hist_funcionarios.dt_alteracoes > isnull(r.dt_canc_resc, (select resc.dt_rescisao
+																	   			  from bethadba.rescisoes resc
+																				  join bethadba.motivos_resc mot
+																					on resc.i_motivos_resc = mot.i_motivos_resc
+																				 where resc.i_entidades = f.i_entidades
+																				   and resc.i_funcionarios = f.i_funcionarios
+																				   and mot.dispensados = 4
+																				   and resc.dt_canc_resc is null)));
