@@ -9,6 +9,7 @@ select e.i_eventos
 
 
 -- CORREÇÃO
+-- Insere os eventos que não possuem histórico na tabela de histórico de eventos
 
 insert into bethadba.hist_eventos
             (i_eventos,

@@ -1,26 +1,17 @@
-/*
- -- VALIDAÇÃO 98
- * Telefone com mais de 11 caracteres na lotação fisica
- */
+-- VALIDAÃ‡ÃƒO 98
+-- Telefone com mais de 11 caracteres na lotaÃ§Ã£o fisica
 
-select 
-                i_entidades,
-                i_locais_trab,
-                fone,
-                length(fone) as quantidade
-            from 
-                bethadba.locais_trab
-            where 
-                quantidade > 11
+select i_entidades,
+       i_locais_trab,
+       fone,
+       length(fone) as quantidade
+  from bethadba.locais_trab
+ where quantidade > 11;
 
-/*
- -- CORREÇÃO
- */
 
-update
-    bethadba.locais_trab
-set
-    fone = right(trim(replace(replace(replace(fone,'-',''),'(',''),')','')),8)
-where
-    length(fone) > 9;
+-- CORREÃ‡ÃƒO
+-- Atualiza o campo fone para que tenha no mÃ¡ximo 8 caracteres, removendo caracteres especiais e espaÃ§os
 
+update bethadba.locais_trab
+   set fone = right(trim(replace(replace(replace(fone,'-',''),'(',''),')','')),8)
+ where length(fone) > 9;

@@ -19,6 +19,7 @@ select i_pessoas,
 
 
 -- CORREÇÃO
+-- Atualiza o campo num_reg para que tenha exatamente 32 caracteres, preenchendo com zeros à esquerda
 
 update bethadba.pessoas_fis_compl
    set num_reg = replicate('0', 32 - length(bethadba.dbf_retira_caracteres_especiais(num_reg))) + bethadba.dbf_retira_caracteres_especiais(num_reg)

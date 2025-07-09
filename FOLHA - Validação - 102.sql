@@ -8,6 +8,7 @@ select i_pessoas, nome_rua
 
 
 -- CORREÇÃO
+-- Insere os logradouros na tabela ruas e atualiza o código das ruas na tabela pessoas_enderecos
 
 begin
   declare w_pessoa integer;
@@ -17,7 +18,7 @@ begin
   set w_conta = 49; -- Informar aqui o último código de logradouro cadastrado no sistema
  
   llloop: for ll as cursor2 dynamic scroll cursor for
-	select i_pessoas,
+	  select i_pessoas,
            nome_rua
       from bethadba.pessoas_enderecos
      where nome_rua is not null and i_ruas is null

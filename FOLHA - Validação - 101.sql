@@ -8,4 +8,9 @@ select i_pessoas
 
 
 -- CORREÇÃO
+-- Atualiza os bancos fora do padrão para o banco 800 (Banco do Brasil)
 
+update bethadba.pessoas_contas
+   set i_bancos = 800
+ where i_bancos >= 758
+   and i_bancos != 800;

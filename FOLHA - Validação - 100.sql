@@ -13,6 +13,7 @@ select i_funcionarios
 
 
 -- CORREÇÃO
+-- Insere os estagiários na tabela estagios com informações padrão
 
 insert into bethadba.estagios (i_entidades, i_funcionarios, i_formacoes, i_atos, i_pessoas, dt_inicial, dt_final, nivel_curso, periodo, fase, num_contrato, dt_prorrog, objetivo, seguro_vida, num_apolice, estagio_obrigatorio)
 with FirstRight as (select *,

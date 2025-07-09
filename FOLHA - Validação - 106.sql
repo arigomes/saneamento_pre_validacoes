@@ -1,18 +1,15 @@
-/*
- -- VALIDAÇÃO 106
- * Pessoas com certidão de nasicmento maior que 32 caracteres
- */
+-- VALIDAÃ‡ÃƒO 106
+-- Pessoas com certidÃ£o de nasicmento maior que 32 caracteres
 
-select 
-    i_pessoas,
-    num_reg
-    from bethadba.pessoas_fis_compl
-    where length(num_reg)  > 32
+select i_pessoas,
+       num_reg
+  from bethadba.pessoas_fis_compl
+ where length(num_reg)  > 32;
 
-/*
- -- CORREÇÃO
- */
+
+-- CORREÃ‡ÃƒO
+-- Atualiza o campo num_reg para null onde o tamanho Ã© maior que 32 caracteres
 
 update bethadba.pessoas_fis_compl
-    set num_reg = null
-    where length(num_reg) > 32
+   set num_reg = null
+ where length(num_reg) > 32;

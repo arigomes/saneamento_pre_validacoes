@@ -11,4 +11,10 @@ select i_entidades,
 
 
 -- CORREÇÃO
+-- Atualiza a competência de desconto para nulo quando o tipo da falta for (1 - Em dias)
 
+update bethadba.faltas
+   set comp_descto = null
+ where tipo_faltas = 1
+   and comp_descto is not null
+   and tipo_descto = 1;
