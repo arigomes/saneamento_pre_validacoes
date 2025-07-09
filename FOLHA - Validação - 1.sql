@@ -11,11 +11,12 @@ having quantidade > 1;
 
 
 -- CORREÇÃO
--- Atualiza o nome das ruas duplicadas para incluir o ID da cidade
 
 update bethadba.ruas
-   set nome = nome || ' - ' || i_cidades
+   set nome = i_ruas || '-' || nome
  where i_ruas in (select i_ruas
-                    from bethadba.ruas 
-                   group by nome, i_cidades
-                  having count(nome) > 1);
+                    from bethadba.ruas
+                   where (select count(1)
+                            from bethadba.ruas r
+                           where (r.i_cidades = ruas.i_cidades or r.i_cidades is null)
+                             and trim(r.nome) = trim(ruas.nome)) > 1);
