@@ -9,6 +9,7 @@ select pj.i_pessoas
 
 
 -- CORREÇÃO
+-- Atualiza o CNPJ nulo para um valor padrão (exemplo: '32646663000174') para evitar problemas de integridade referencial
 
 update bethadba.pessoas_juridicas
    set cnpj ='32646663000174'
