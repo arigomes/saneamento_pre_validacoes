@@ -1,7 +1,7 @@
 import pyodbc
 
 try:
-    conn = pyodbc.connect(r"FILEDSN=c:\Scripts\saneamento_pre_validacoes\conexao.dsn")
+    conn = pyodbc.connect(r"FILEDSN=c:\Scripts\saneamento_pre_validacoes\arquivos\conexao.dsn")
     cursor = conn.cursor()
     cursor.execute("SELECT 1")
     resultado = cursor.fetchone()
