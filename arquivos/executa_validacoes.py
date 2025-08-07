@@ -17,6 +17,13 @@ nome_arquivo = f"correcao_{datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
 arquivo_saida = os.path.join(pasta_saida, nome_arquivo)
 
 with open(arquivo_saida, 'w', encoding='utf-8') as fout:
+    # Comandos iniciais
+    fout.write(
+        "call bethadba.dbp_conn_gera (1, year(today()), 300, 0);\n"
+        "call bethadba.pg_setoption('fire_triggers','off');\n"
+        "call bethadba.pg_setoption('wait_for_COMMIT','on');\n"
+        "commit;\n\n"
+    )
     for arquivo in arquivos_sql:
         with open(os.path.join(pasta, arquivo), encoding='utf-8') as f:
             conteudo = f.read()
@@ -45,13 +52,22 @@ with open(arquivo_saida, 'w', encoding='utf-8') as fout:
             cursor.execute(select_sql)
             resultado = cursor.fetchall()
             if resultado:
-                # Escreve o nome da validação (nome do arquivo sem extensão)
-                fout.write(f"{os.path.splitext(arquivo)[0]}\n\n")
+                # Escreve o nome da validação (nome do arquivo sem extensão) com prefixo '-- '
+                fout.write(f"-- {os.path.splitext(arquivo)[0]}\n\n")
                 # Escreve o bloco de correção
                 correcao_sql = partes[1].strip()
                 fout.write(correcao_sql + '\n\n')
+                # Adiciona commit após cada validação
+                fout.write("commit;\n\n")
         except Exception as e:
             print(f"Erro ao processar {arquivo}: {e}")
+
+    # Comandos finais
+    fout.write(
+        "call bethadba.pg_setoption('fire_triggers','on');\n"
+        "call bethadba.pg_setoption('wait_for_COMMIT','off');\n"
+        "commit;"
+    )
 
 cursor.close()
 conn.close()
