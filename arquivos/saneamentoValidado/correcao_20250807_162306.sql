@@ -3,29 +3,6 @@ call bethadba.pg_setoption('fire_triggers','off');
 call bethadba.pg_setoption('wait_for_COMMIT','on');
 commit;
 
--- FOLHA - Validação - 133
-
--- Adiciona data de fechamento de cálculo da folha para as entidades que não possuem data de fechamento de cálculo da folha
-
-for a1 as a2 cursor for
-    select xxi_ent = i_entidades,
-           xxi_compe = i_competencias,
-           i_competencias,
-           linha = row_number() over (order by xxi_ent),
-           xxdt_fechamento = dateformat(dateadd(dd, -DAY(i_competencias),dateadd(mm,1,i_competencias)),'yyyy-MM-dd')
-      from bethadba.dados_calc dc 
-     where dt_fechamento is null
-do
-    update bethadba.dados_calc
-       set dt_fechamento = xxdt_fechamento
-     where i_competencias < '2099-12-01'
-       and i_entidades = xxi_ent;
-       
-    message 'Data de fechamento adicionada: ' || xxdt_fechamento || ', na competencia: ' || i_competencias || '. Linha: ' ||linha to client;
-end for;
-
-commit;
-
 -- FOLHA - Validação - 147
 
 -- Verificar se o funcionário realmente não possui movimentações no período.
@@ -42,22 +19,6 @@ delete
                       and m.i_tipos_proc = bethadba.dados_calc.i_tipos_proc
                       and m.i_processamentos = bethadba.dados_calc.i_processamentos
                       and m.i_competencias = bethadba.dados_calc.i_competencias);
-
-commit;
-
--- FOLHA - Validação - 180
-
--- Remove a configuração de férias dos cargos com classificação comissionado ou não classificado
-
-update bethadba.cargos_compl cc
-   set i_config_ferias = null
-  from bethadba.cargos c
-  join bethadba.tipos_cargos tc
-    on c.i_tipos_cargos = tc.i_tipos_cargos
- where c.i_entidades = cc.i_entidades
-   and c.i_cargos = cc.i_cargos
-   and tc.classif in (0, 2)
-   and cc.i_config_ferias is not null;
 
 commit;
 
@@ -259,27 +220,13 @@ commit;
 
 commit;
 
--- FOLHA - Validação - 22
+-- FOLHA - Validação - 62
 
--- Atualiza a data de fechamento das folhas que não foram fechadas, adicionando a data de fechamento como o último dia do mês da competência
+-- Atualiza os cargos que não possuem configuração de férias
 
-for a1 as a2 cursor for
-    select xxi_ent = i_entidades,
-           xxi_compe = i_competencias,
-           i_competencias,
-           linha = row_number() over (order by xxi_ent),
-           xxdt_fechamento = dateformat(dateadd(dd, -DAY(i_competencias),dateadd(mm,1,i_competencias)),'yyyy-MM-dd')
-      from bethadba.processamentos
-     where dt_fechamento is null
-       and i_competencias < '2999-12-01'
-do
-    update bethadba.processamentos
-       set dt_fechamento = xxdt_fechamento
-     where i_competencias = xxi_compe
-       and i_entidades = xxi_ent;
-    
-    message 'Data de fechamento adicionada: ' || xxdt_fechamento || ', na competencia: ' || i_competencias || '. Linha: ' ||linha to client; 
-end for;
+update bethadba.cargos_compl 
+   set i_config_ferias = 1
+ where i_config_ferias is null;
 
 commit;
 
@@ -288,10 +235,7 @@ commit;
 -- Inserir os dados na tabela planos_saude_tabelas_faixas
 
 INSERT INTO bethadba.planos_saude_tabelas_faixas (i_pessoas,i_entidades,i_planos_saude,i_tabelas,i_sequencial,idade_ini,idade_fin,vlr_plano)
-VALUES (1, 1, 1, 1, 1, 0, 17, 100.00),
-       (2, 1, 1, 1, 2, 18, 21, 150.00),
-       (3, 1, 1, 1, 3, 22, 40, 200.00),
-       (4, 1, 1, 1, 4, 41, 80, 250.00);
+VALUES (1, 1, 1, 1, 1, 0, 17, 100.00);
 
 commit;
 
