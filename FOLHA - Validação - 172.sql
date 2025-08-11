@@ -63,7 +63,7 @@ select r.i_entidades,
                      and a.i_funcionarios = r.i_funcionarios
                      and a.dt_afastamento = r.dt_rescisao)
 
- order by i_funcionarios asc
+ order by i_funcionarios asc;
 
 
 -- CORREÇÃO

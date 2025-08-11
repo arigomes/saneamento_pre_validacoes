@@ -37,7 +37,10 @@ select pessoaInstituidor = (select f2.i_pessoas
                                           and dt_nascimento is not null
                                           and dt_nascimento <> '01/01/1900'), (select dt_nascimento
                                                                                  from bethadba.pessoas_fisicas
-                                                                                where i_pessoas = pessoaInstituidor
+                                                                                where i_pessoas = (select f2.i_pessoas
+                                                                                                     from bethadba.funcionarios as f2 
+                                                                                                    where f2.i_entidades = b.i_entidades_inst
+                                                                                                      and f2.i_funcionarios = b.i_instituidor)
                                                                                   and dt_nascimento is not null
                                                                                   and dt_nascimento <> '01/01/1900')), null),
        1 as mot_ini_depende,
@@ -53,4 +56,8 @@ select pessoaInstituidor = (select f2.i_pessoas
    and f.tipo_pens in (1, 2)
    and not exists (select 1
                      from bethadba.dependentes as d
-                    where d.i_pessoas = f.i_pessoas);
+                    where d.i_pessoas = (select f2.i_pessoas
+                                           from bethadba.funcionarios as f2 
+                                          where f2.i_entidades = b.i_entidades_inst
+                                            and f2.i_funcionarios = b.i_instituidor)
+                      and d.i_dependentes = f.i_pessoas);

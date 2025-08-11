@@ -24,7 +24,16 @@ select i_pessoas,
 -- Atualizar o CPF com o dígito correto
 
 update bethadba.hist_pessoas_fis as hpf
-   set cpf = concat(substring(cpf, 1, 9), digitoCalculado)
+   set cpf = string(MOD(MOD(cast(substring(hpf.cpf,1,1) + substring(hpf.cpf,2,1) * 2 + substring(hpf.cpf,3,1) * 3 + 
+              substring(hpf.cpf,4,1) * 4 + substring(hpf.cpf,5,1) * 5 + substring(hpf.cpf,6,1) * 6 +
+              substring(hpf.cpf,7,1) * 7 + substring(hpf.cpf,8,1) * 8 + substring(hpf.cpf,9,1) * 9 as int), 11), 10))
+             ||
+             string(MOD(MOD(cast(substring(hpf.cpf,2,1) + substring(hpf.cpf,3,1) * 2 + substring(hpf.cpf,4,1) * 3 + 
+              substring(hpf.cpf,5,1) * 4 + substring(hpf.cpf,6,1) * 5 + substring(hpf.cpf,7,1) * 6 + 
+              substring(hpf.cpf,8,1) * 7 + substring(hpf.cpf,9,1) * 8 + 
+             MOD(MOD(cast(substring(hpf.cpf,1,1) + substring(hpf.cpf,2,1) * 2 + substring(hpf.cpf,3,1) * 3 + 
+              substring(hpf.cpf,4,1) * 4 + substring(hpf.cpf,5,1) * 5 + substring(hpf.cpf,6,1) * 6 +
+              substring(hpf.cpf,7,1) * 7 + substring(hpf.cpf,8,1) * 8 + substring(hpf.cpf,9,1) * 9 as int), 11), 10) * 9 as int),11),10))
  where i_pessoas in (select i_pessoas
                        from (select i_pessoas, 
                                     MOD(MOD(cast(substring(cpf,1,1) + substring(cpf,2,1) * 2 + substring(cpf,3,1) * 3 + 

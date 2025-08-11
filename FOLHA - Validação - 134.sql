@@ -41,22 +41,44 @@ select hf.i_entidades as chave_dsk1,
                 
 begin
     llLoop: for ll as cur_01 dynamic scroll cursor for
-        select v.i_entidades as w_i_entidades, v.i_funcionarios as w_i_funcionarios, v.i_eventos as w_i_eventos, v.dt_inicial as w_dt_inicial, r.dt_rescisao as w_dt_rescisao
-          from bethadba.variaveis v, bethadba.rescisoes r
+        select v.i_entidades as w_i_entidades, 
+               v.i_funcionarios as w_i_funcionarios, 
+               v.i_tipos_proc as w_i_tipos_proc,
+               v.i_processamentos as w_i_processamentos,
+               v.i_eventos as w_i_eventos, 
+               v.dt_inicial as w_dt_inicial, 
+               v.dt_final as w_dt_final,
+               r.dt_rescisao as w_dt_rescisao
+          from bethadba.variaveis v,
+               bethadba.rescisoes r
          where r.i_entidades = v.i_entidades
            and r.i_funcionarios = v.i_funcionarios
            and r.dt_rescisao < v.dt_final
     do
-        message 'Ajustando a data final da variavel: '+string(w_i_funcionarios)+' - '+string(w_i_eventos)+' - '+string(w_dt_inicial) to client;
+       --message 'Ajustando a data final da variavel: '+string(w_i_funcionarios)+' - '+string(w_i_eventos)+' - '+string(w_dt_inicial) to client;
 
+        -- Remove conflicting records before updating to avoid PK violation
+        delete from bethadba.variaveis
+         where i_entidades = w_i_entidades
+           and i_funcionarios = w_i_funcionarios
+           and i_tipos_proc = w_i_tipos_proc
+           and i_processamentos = w_i_processamentos
+           and i_eventos = w_i_eventos
+           and dt_inicial = w_dt_inicial
+           and dt_final = substring(w_dt_rescisao,0,7);
+
+        -- Atualiza a data final da variável
         update bethadba.variaveis
            set dt_final = substring(w_dt_rescisao,0,7)
          where i_entidades = w_i_entidades
            and i_funcionarios = w_i_funcionarios
+           and i_tipos_proc = w_i_tipos_proc
+           and i_processamentos = w_i_processamentos
            and i_eventos = w_i_eventos
-           and dt_inicial = w_dt_inicial
+           and dt_inicial = w_dt_inicial;
     end for;
-   
+
+   -- Remove registros com data inicial maior que a data de rescisão
    delete bethadba.variaveis
      from bethadba.variaveis v
     inner join bethadba.rescisoes r
@@ -64,10 +86,10 @@ begin
     where r.dt_rescisao < v.dt_inicial
       and r.i_motivos_apos is null
       and r.dt_canc_resc is null
-      and r.i_rescisoes  = (select max(r1.i_rescisoes)
-                              from bethadba.rescisoes r1
-                             where r1.i_entidades = r.i_entidades
-                               and r1.i_funcionarios = r.i_funcionarios
-                               and r1.dt_canc_resc is null
-                               and r1.i_motivos_apos is null)
+      and r.i_rescisoes = (select max(r1.i_rescisoes)
+                             from bethadba.rescisoes r1
+                            where r1.i_entidades = r.i_entidades
+                              and r1.i_funcionarios = r.i_funcionarios
+                              and r1.dt_canc_resc is null
+                              and r1.i_motivos_apos is null)
 end;
