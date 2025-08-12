@@ -23,18 +23,20 @@ select hs.i_entidades,
 
 -- CORREÇÃO
 -- Cria tabela temporária para armazenar os ajustes
-create table cnv_ajusta_199 (i_entidades integer, menor_dt_alteracao_salario timestamp, nivel_salario integer, i_cargos integer, dt_alteracao_cargo timestamp, nivel_cargo integer);
+create table cnv_ajusta_199
+(i_entidades integer, menor_dt_alteracao_salario timestamp, nivel_salario integer, i_cargos integer, dt_alteracao_cargo timestamp, nivel_cargo integer, seq integer);
 
 commit;
 
 -- Atualiza a tabela cnv_ajusta_199 com os dados necessários para o ajuste
-insert into cnv_ajusta_199 (i_entidades integer, menor_dt_alteracao_salario timestamp, nivel_salario integer, i_cargos integer, dt_alteracao_cargo timestamp, nivel_cargo integer)
+insert into cnv_ajusta_199 (i_entidades,menor_dt_alteracao_salario,nivel_salario,i_cargos,dt_alteracao_cargo,nivel_cargo,seq)
 select hs.i_entidades,
        min(hs.dt_alteracoes) as menor_dt_alteracao_salario,
        hs.i_niveis as nivel_salario,
        hc.i_cargos,
        hcc.dt_alteracoes as dt_alteracao_cargo,
-       hcc.i_niveis as nivel_cargo
+       hcc.i_niveis as nivel_cargo,
+       row_number() over (partition by hs.i_entidades, hs.i_niveis, hc.i_cargos, hcc.dt_alteracoes, hcc.i_niveis order by hs.dt_alteracoes) as seq
   from bethadba.hist_salariais as hs
   join bethadba.hist_cargos as hc 
     on hs.i_funcionarios = hc.i_funcionarios 
@@ -52,7 +54,7 @@ commit;
 
 -- Atualiza a tabela hist_salariais com a data de alteração do cargo que possui a menor data de alteração de salário
 update bethadba.hist_salariais as hs
-   set hs.dt_alteracoes = cnv.dt_alteracao_cargo
+   set hs.dt_alteracoes = convert(date, cnv.dt_alteracao_cargo)
   from cnv_ajusta_199 as cnv
  where convert(date, cnv.menor_dt_alteracao_salario) = convert(date, cnv.dt_alteracao_cargo)
    and hs.dt_alteracoes = cnv.menor_dt_alteracao_salario
@@ -66,13 +68,14 @@ delete cnv_ajusta_199;
 commit;
 
 -- Atualiza a tabela cnv_ajusta_199 com os dados necessários para o ajuste
-insert into cnv_ajusta_199 (i_entidades integer, menor_dt_alteracao_salario timestamp, nivel_salario integer, i_cargos integer, dt_alteracao_cargo timestamp, nivel_cargo integer)
+insert into cnv_ajusta_199 (i_entidades,menor_dt_alteracao_salario,nivel_salario,i_cargos,dt_alteracao_cargo,nivel_cargo,seq)
 select hs.i_entidades,
        min(hs.dt_alteracoes) as menor_dt_alteracao_salario,
        hs.i_niveis as nivel_salario,
        hc.i_cargos,
        hcc.dt_alteracoes as dt_alteracao_cargo,
-       hcc.i_niveis as nivel_cargo
+       hcc.i_niveis as nivel_cargo,
+       row_number() over (partition by hs.i_entidades, hs.i_niveis, hc.i_cargos, hcc.dt_alteracoes, hcc.i_niveis order by hs.dt_alteracoes) as seq
   from bethadba.hist_salariais hs
   join bethadba.hist_cargos hc 
     on hs.i_funcionarios = hc.i_funcionarios 
@@ -89,18 +92,32 @@ select hs.i_entidades,
 commit;
 
 -- Atualiza a tabela hist_cargos_compl com a menor data de alteração de salário
+-- Atualiza hist_cargos_compl, incrementando 1 segundo se houver conflito de chave primária
 update bethadba.hist_cargos_compl
-   set hist_cargos_compl.dt_alteracoes = menor_dt_alteracao_salario
+  set hist_cargos_compl.dt_alteracoes = (
+      -- Busca a menor data de alteração de salário, incrementando segundos até não haver conflito
+      select dateadd(second, isnull((
+        select count(*)
+          from bethadba.hist_cargos_compl as hcc2
+         where hcc2.i_entidades = cnv_ajusta_199.i_entidades
+          and hcc2.i_cargos = cnv_ajusta_199.i_cargos
+          and hcc2.i_niveis = cnv_ajusta_199.nivel_cargo
+          and hcc2.dt_alteracoes >= convert(date, cnv_ajusta_199.menor_dt_alteracao_salario)
+          and hcc2.dt_alteracoes < dateadd(second, 60, convert(date, cnv_ajusta_199.menor_dt_alteracao_salario))
+      ), 0), convert(date, cnv_ajusta_199.menor_dt_alteracao_salario))
+   )
   from cnv_ajusta_199
- where convert(date,menor_dt_alteracao_salario ) < convert(date, dt_alteracao_cargo)
-   and hist_cargos_compl.i_entidades = cnv_ajusta_199.i_entidades
-   and hist_cargos_compl.i_cargos = cnv_ajusta_199.i_cargos
-   and hist_cargos_compl.i_niveis = cnv_ajusta_199.nivel_cargo
-   and hist_cargos_compl.dt_alteracoes = (select min(a.dt_alteracoes)
-              from bethadba.hist_cargos_compl as a
-             where a.i_entidades = bethadba.hist_cargos_compl.i_entidades
-               and a.i_cargos = bethadba.hist_cargos_compl.i_cargos
-               and a.i_niveis = bethadba.hist_cargos_compl.i_niveis);
+ where convert(date, cnv_ajusta_199.menor_dt_alteracao_salario) < convert(date, cnv_ajusta_199.dt_alteracao_cargo)
+  and hist_cargos_compl.i_entidades = cnv_ajusta_199.i_entidades
+  and hist_cargos_compl.i_cargos = cnv_ajusta_199.i_cargos
+  and hist_cargos_compl.i_niveis = cnv_ajusta_199.nivel_cargo
+  and hist_cargos_compl.dt_alteracoes = (
+      select min(a.dt_alteracoes)
+       from bethadba.hist_cargos_compl as a
+      where a.i_entidades = bethadba.hist_cargos_compl.i_entidades
+        and a.i_cargos = bethadba.hist_cargos_compl.i_cargos
+        and a.i_niveis = bethadba.hist_cargos_compl.i_niveis
+   );
 
 commit;
 
@@ -114,19 +131,20 @@ update bethadba.hist_salariais
 
 commit;
 
--- Limpa a tabela cnv_ajusta_199
+-- limpa a tabela cnv_ajusta_199
 delete cnv_ajusta_199;
 
 commit;
 
 -- Atualiza a tabela cnv_ajusta_199 com os dados necessários para o ajuste
-insert into cnv_ajusta_199 (i_entidades integer, menor_dt_alteracao_salario timestamp, nivel_salario integer, i_cargos integer, dt_alteracao_cargo timestamp, nivel_cargo integer)
+insert into cnv_ajusta_199 (i_entidades,menor_dt_alteracao_salario,nivel_salario,i_cargos,dt_alteracao_cargo,nivel_cargo,seq)
 select hs.i_entidades,
        min(hs.dt_alteracoes) as menor_dt_alteracao_salario,
        hs.i_niveis as nivel_salario,
        hc.i_cargos,
        hcc.dt_alteracoes as dt_alteracao_cargo,
-       hcc.i_niveis as nivel_cargo
+       hcc.i_niveis as nivel_cargo,
+       row_number() over (partition by hs.i_entidades, hs.i_niveis, hc.i_cargos, hcc.dt_alteracoes, hcc.i_niveis order by hs.dt_alteracoes) as seq
   from bethadba.hist_salariais hs
   join bethadba.hist_cargos hc 
     on hs.i_funcionarios = hc.i_funcionarios 
@@ -139,20 +157,6 @@ select hs.i_entidades,
    and hs.i_niveis = hcc.i_niveis
  group by hs.i_entidades, hs.i_niveis, hc.i_cargos, hcc.dt_alteracoes, hcc.i_niveis
  order by hs.i_entidades, hc.i_cargos, hs.i_niveis;
-
-commit;
-
--- Altera a tabela cnv_ajusta_199 para adicionar a coluna seq
-alter table cnv_ajusta_199 add (seq integer);
-
-commit;
-
--- Atualiza a coluna seq com valores sequenciais
-update cnv_ajusta_199 set seq = number(*);
-update cnv_ajusta_199 set menor_dt_alteracao_salario = replace(menor_dt_alteracao_salario, '.000000', '.00000'||seq) where length(seq) = 1 ;
-update cnv_ajusta_199 set menor_dt_alteracao_salario = replace(menor_dt_alteracao_salario, '.000000', '.0000'||seq) where length(seq) = 2 ;
-update cnv_ajusta_199 set menor_dt_alteracao_salario = replace(menor_dt_alteracao_salario, '.000000', '.000'||seq) where length(seq) = 3 ;
-update cnv_ajusta_199 set menor_dt_alteracao_salario = replace(menor_dt_alteracao_salario, '.000000', '.00'||seq) where length(seq) = 4 ;
 
 commit;
 

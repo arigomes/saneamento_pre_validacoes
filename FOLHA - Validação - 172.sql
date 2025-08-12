@@ -69,20 +69,18 @@ select r.i_entidades,
 -- CORREÇÃO
 -- Atualizar o afastamento com a data da rescisão se não houver afastamento, criar um novo com a data da rescisão
 
-update bethadba.afastamentos
-   set dt_afastamento = r.dt_rescisao
-  from bethadba.rescisoes r
+update bethadba.rescisoes
+   set dt_rescisao = a.dt_afastamento
+  from bethadba.afastamentos a
   join bethadba.tipos_afast ta
-    on (ta.classif = 8 or ta.classif = 9)
- where afastamentos.i_entidades = r.i_entidades
-   and afastamentos.i_funcionarios = r.i_funcionarios
-   and afastamentos.dt_afastamento = r.dt_rescisao
-   and afastamentos.i_tipos_afast = ta.i_tipos_afast
-   and not exists (select 1
-                     from bethadba.rescisoes rr
-                    where rr.i_entidades = r.i_entidades
-                      and rr.i_funcionarios = r.i_funcionarios
-                      and rr.dt_rescisao = r.dt_rescisao);
+    on a.i_tipos_afast = ta.i_tipos_afast
+ where ((ta.classif = 8 and rescisoes.i_motivos_apos is null)
+    or (ta.classif = 9 and rescisoes.i_motivos_apos is not null)
+    or (ta.classif = 8 and rescisoes.i_motivos_apos is not null))
+   and rescisoes.i_entidades = a.i_entidades
+   and rescisoes.i_funcionarios = a.i_funcionarios
+   and rescisoes.dt_rescisao <> a.dt_afastamento;
+
 
 -- Se não houver afastamento, criar um novo afastamento com a data da rescisão.
 insert into bethadba.afastamentos(

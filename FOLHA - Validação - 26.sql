@@ -37,36 +37,46 @@ select left(tab.data_afastamento, 8) || '01' as nova_data_final,
 
 
 -- CORREÇÃO
--- Atualiza as variáveis com data inicial ou final maior que a data de rescisão, definindo a data incial ou final como o primeiro dia do mês da data de rescisão
+-- Deleta as variáveis com data inicial maior que a data de rescisão
+delete from bethadba.variaveis
+ where exists (select 1
+      			     from (select a.i_entidades,
+      			 		    	        a.i_funcionarios,
+      			 			            max(a.dt_afastamento) as data_afastamento
+              			     from bethadba.afastamentos a
+              			     join bethadba.tipos_afast ta
+                		       on ta.i_tipos_afast = a.i_tipos_afast
+             			      where ta.classif = 8
+               			      and a.dt_afastamento <= today()
+               			      and isnull(a.dt_ultimo_dia, today()) >= today()
+             			      group by a.i_entidades, a.i_funcionarios) af
+      			     join bethadba.funcionarios f
+        		       on f.i_entidades = af.i_entidades
+       			      and f.i_funcionarios = af.i_funcionarios
+     			      where variaveis.i_entidades = af.i_entidades
+       			      and variaveis.i_funcionarios = af.i_funcionarios
+       			      and variaveis.i_eventos is not null
+       			      and f.conselheiro_tutelar = 'N'
+       			      and variaveis.dt_inicial > af.data_afastamento);
 
-update bethadba.variaveis v
-   set v.dt_inicial = left(tab.data_afastamento, 8) || '01',
-       v.dt_final = left(tab.data_afastamento, 8) || '01'
+-- Atualiza as variáveis com data final maior que a data de rescisão
+update bethadba.variaveis
+   set dt_final = cast(left(af.data_afastamento, 7) || '-01' as date)
   from (select a.i_entidades,
                a.i_funcionarios,
-               coalesce(ta.classif, 1) as classif,
-               max(a.dt_afastamento) as data_afastamento,
-               f.conselheiro_tutelar,
-               v.i_eventos,
-               v.i_processamentos,
-               v.i_tipos_proc,
-               v.dt_inicial,
-               v.dt_final 
+               max(a.dt_afastamento) as data_afastamento
           from bethadba.afastamentos a
           join bethadba.tipos_afast ta
-            on (ta.i_tipos_afast = a.i_tipos_afast)
-          join bethadba.funcionarios f
-            on (f.i_entidades = a.i_entidades
-           and f.i_funcionarios = a.i_funcionarios)
-          left join bethadba.variaveis v
-            on (v.i_entidades = a.i_entidades
-           and v.i_funcionarios = a.i_funcionarios)
+            on ta.i_tipos_afast = a.i_tipos_afast
          where ta.classif = 8
            and a.dt_afastamento <= today()
-           and isnull(a.dt_ultimo_dia,today()) >= today()
-           and v.i_eventos is not null
-           and f.conselheiro_tutelar = 'N'
-         group by a.i_entidades, a.i_funcionarios, ta.classif, f.conselheiro_tutelar, v.i_eventos, v.i_processamentos, v.i_tipos_proc , v.dt_inicial , v.dt_final 
-         order by a.i_entidades, a.i_funcionarios,  v.dt_inicial , v.dt_final ) as tab
- where tab.dt_inicial > tab.data_afastamento
-    or tab.dt_final > tab.data_afastamento;
+           and isnull(a.dt_ultimo_dia, today()) >= today()
+         group by a.i_entidades, a.i_funcionarios) af
+  join bethadba.funcionarios f
+    on f.i_entidades = af.i_entidades
+   and f.i_funcionarios = af.i_funcionarios
+ where variaveis.i_entidades = af.i_entidades
+   and variaveis.i_funcionarios = af.i_funcionarios
+   and variaveis.i_eventos is not null
+   and f.conselheiro_tutelar = 'N'
+   and variaveis.dt_final > af.data_afastamento;

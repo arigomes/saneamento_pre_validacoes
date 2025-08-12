@@ -22,14 +22,13 @@ select hf.i_entidades as chave_dsk1,
    and r.i_funcionarios = v2.i_funcionarios 
  inner join bethadba.vinculos v
     on v.i_vinculos = hf.i_vinculos
- where hf.i_entidades in (1,2,3,4)
-   and (r.dt_rescisao < v2.dt_inicial or r.dt_rescisao < v2.dt_final)
+ where (r.dt_rescisao < v2.dt_inicial or r.dt_rescisao < v2.dt_final)
    and r.i_motivos_apos is null
    and r.dt_canc_resc is null
    and r.i_rescisoes  = (select max(r.i_rescisoes)
                            from bethadba.rescisoes r
-                          where r.i_entidades = chave_dsk1
-                            and r.i_funcionarios = chave_dsk2
+                          where r.i_entidades = f.i_entidades
+                            and r.i_funcionarios = f.i_funcionarios
                             and r.dt_canc_resc is null
                             and r.i_motivos_apos is null)
  group by hf.i_entidades, hf.i_funcionarios, r.dt_rescisao, v2.dt_inicial, v2.dt_final 
@@ -37,59 +36,38 @@ select hf.i_entidades as chave_dsk1,
 
 
 -- CORREÇÃO
--- Ajusta a data final da variavel para a data de rescisão e remove os lançamentos posteriores a rescisão
-                
-begin
-    llLoop: for ll as cur_01 dynamic scroll cursor for
-        select v.i_entidades as w_i_entidades, 
-               v.i_funcionarios as w_i_funcionarios, 
-               v.i_tipos_proc as w_i_tipos_proc,
-               v.i_processamentos as w_i_processamentos,
-               v.i_eventos as w_i_eventos, 
-               v.dt_inicial as w_dt_inicial, 
-               v.dt_final as w_dt_final,
-               r.dt_rescisao as w_dt_rescisao
-          from bethadba.variaveis v,
-               bethadba.rescisoes r
-         where r.i_entidades = v.i_entidades
-           and r.i_funcionarios = v.i_funcionarios
-           and r.dt_rescisao < v.dt_final
-    do
-       --message 'Ajustando a data final da variavel: '+string(w_i_funcionarios)+' - '+string(w_i_eventos)+' - '+string(w_dt_inicial) to client;
+-- Deleta as variáveis com data inicial maior que a data de rescisão
+delete from bethadba.variaveis
+ where exists (select 1
+      			     from (select r.i_entidades,
+      			 		    	        r.i_funcionarios,
+      			 			            max(r.dt_rescisao) as data_rescisao
+                         from bethadba.rescisoes r
+                        where r.i_entidades = variaveis.i_entidades
+                          and r.i_funcionarios = variaveis.i_funcionarios
+                          and r.dt_canc_resc is null
+                          and r.i_motivos_apos is null
+                        group by r.i_entidades, r.i_funcionarios) resc
+      			     join bethadba.funcionarios f
+        		       on f.i_entidades = resc.i_entidades
+       			      and f.i_funcionarios = resc.i_funcionarios
+     			      where variaveis.i_entidades = resc.i_entidades
+       			      and variaveis.i_funcionarios = resc.i_funcionarios
+       			      and variaveis.i_eventos is not null
+       			      and f.conselheiro_tutelar = 'N'
+       			      and variaveis.dt_inicial > resc.data_rescisao);
 
-        -- Remove conflicting records before updating to avoid PK violation
-        delete from bethadba.variaveis
-         where i_entidades = w_i_entidades
-           and i_funcionarios = w_i_funcionarios
-           and i_tipos_proc = w_i_tipos_proc
-           and i_processamentos = w_i_processamentos
-           and i_eventos = w_i_eventos
-           and dt_inicial = w_dt_inicial
-           and dt_final = substring(w_dt_rescisao,0,7);
-
-        -- Atualiza a data final da variável
-        update bethadba.variaveis
-           set dt_final = substring(w_dt_rescisao,0,7)
-         where i_entidades = w_i_entidades
-           and i_funcionarios = w_i_funcionarios
-           and i_tipos_proc = w_i_tipos_proc
-           and i_processamentos = w_i_processamentos
-           and i_eventos = w_i_eventos
-           and dt_inicial = w_dt_inicial;
-    end for;
-
-   -- Remove registros com data inicial maior que a data de rescisão
-   delete bethadba.variaveis
-     from bethadba.variaveis v
-    inner join bethadba.rescisoes r
-       on (v.i_funcionarios = r.i_funcionarios and v.i_entidades = r.i_entidades) 
-    where r.dt_rescisao < v.dt_inicial
-      and r.i_motivos_apos is null
-      and r.dt_canc_resc is null
-      and r.i_rescisoes = (select max(r1.i_rescisoes)
-                             from bethadba.rescisoes r1
-                            where r1.i_entidades = r.i_entidades
-                              and r1.i_funcionarios = r.i_funcionarios
-                              and r1.dt_canc_resc is null
-                              and r1.i_motivos_apos is null)
-end;
+-- Atualiza as variáveis com data final maior que a data de rescisão
+update bethadba.variaveis
+   set dt_final = cast(left(resc.data_rescisao, 7) || '-01' as date)
+  from (select r.i_entidades,
+               r.i_funcionarios,
+               max(r.dt_rescisao) as data_rescisao
+          from bethadba.rescisoes r
+         where r.dt_canc_resc is null
+           and r.i_motivos_apos is null
+         group by r.i_entidades, r.i_funcionarios) resc
+ where variaveis.i_entidades = resc.i_entidades
+   and variaveis.i_funcionarios = resc.i_funcionarios
+   and variaveis.i_eventos is not null
+   and variaveis.dt_final > resc.data_rescisao;
