@@ -47,18 +47,45 @@ select hs.i_entidades,
  where hs.i_niveis is not null
    and hs.dt_alteracoes < hcc.dt_alteracoes
    and hs.i_niveis = hcc.i_niveis
- group by hs.i_entidades, hs.i_niveis, hc.i_cargos, hcc.dt_alteracoes, hcc.i_niveis
- order by hs.i_entidades, hc.i_cargos,  hs.i_niveis;
+ group by hs.i_entidades, hs.i_niveis, hc.i_cargos, hcc.dt_alteracoes, hcc.i_niveis, hs.dt_alteracoes
+ order by hs.i_entidades, hc.i_cargos, hs.i_niveis;
 
 commit;
 
 -- Atualiza a tabela hist_salariais com a data de alteração do cargo que possui a menor data de alteração de salário
 update bethadba.hist_salariais as hs
-   set hs.dt_alteracoes = convert(date, cnv.dt_alteracao_cargo)
+   set hs.dt_alteracoes = dateadd(second, 
+        isnull(
+            (select count(*)
+               from bethadba.hist_salariais hs2
+              where hs2.i_entidades = hs.i_entidades
+                and hs2.i_funcionarios = hs.i_funcionarios
+                and hs2.dt_alteracoes >= convert(date, cnv.dt_alteracao_cargo)
+                and hs2.dt_alteracoes < dateadd(second, 60, convert(date, cnv.dt_alteracao_cargo))
+            ), 0) 
+        + isnull(cnv.seq, 0) - 1, -- incrementa pelo seq para garantir unicidade
+        convert(date, cnv.dt_alteracao_cargo))
   from cnv_ajusta_199 as cnv
  where convert(date, cnv.menor_dt_alteracao_salario) = convert(date, cnv.dt_alteracao_cargo)
    and hs.dt_alteracoes = cnv.menor_dt_alteracao_salario
-   and hs.i_niveis = cnv.nivel_salario;
+   and hs.i_niveis = cnv.nivel_salario
+   and not exists (
+        select 1
+          from bethadba.hist_salariais hs3
+         where hs3.i_entidades = hs.i_entidades
+           and hs3.i_funcionarios = hs.i_funcionarios
+           and hs3.dt_alteracoes = dateadd(second, 
+                isnull(
+                    (select count(*)
+                       from bethadba.hist_salariais hs2
+                      where hs2.i_entidades = hs.i_entidades
+                        and hs2.i_funcionarios = hs.i_funcionarios
+                        and hs2.dt_alteracoes >= convert(date, cnv.dt_alteracao_cargo)
+                        and hs2.dt_alteracoes < dateadd(second, 60, convert(date, cnv.dt_alteracao_cargo))
+                    ), 0)
+                + isnull(cnv.seq, 0) - 1, -- incrementa pelo seq para garantir unicidade
+                convert(date, cnv.dt_alteracao_cargo))
+       );
 
 commit;
 
