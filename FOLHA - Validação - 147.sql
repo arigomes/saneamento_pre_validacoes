@@ -33,18 +33,6 @@ select dc.i_entidades,
 -- Verificar se o funcionário realmente não possui movimentações no período.
 
 begin
-  -- Caso positivo, excluir o registro da tabela dados_calc.
-  delete
-    from bethadba.dados_calc
-  where dados_calc.i_tipos_proc in (11, 41, 42)
-    and dados_calc.dt_fechamento is not null
-    and not exists (select 1
-                      from bethadba.movimentos as m 
-                      where m.i_funcionarios = dados_calc.i_funcionarios
-                        and m.i_entidades = dados_calc.i_entidades
-                        and m.i_tipos_proc = dados_calc.i_tipos_proc
-                        and m.i_processamentos = dados_calc.i_processamentos
-                        and m.i_competencias = dados_calc.i_competencias);
 
   -- Caso positivo, excluir o registro da tabela bases_calc.
   delete 
@@ -58,6 +46,19 @@ begin
                          and m.i_processamentos = bases_calc.i_processamentos
                          and m.i_competencias = bases_calc.i_competencias);
 
+  -- Caso positivo, excluir o registro da tabela dados_calc.
+  delete
+    from bethadba.dados_calc
+  where dados_calc.i_tipos_proc in (11, 41, 42)
+    and dados_calc.dt_fechamento is not null
+    and not exists (select 1
+                      from bethadba.movimentos as m 
+                      where m.i_funcionarios = dados_calc.i_funcionarios
+                        and m.i_entidades = dados_calc.i_entidades
+                        and m.i_tipos_proc = dados_calc.i_tipos_proc
+                        and m.i_processamentos = dados_calc.i_processamentos
+                        and m.i_competencias = dados_calc.i_competencias);
+
   -- Caso positivo, excluir o registro da tabela periodos_calculo_fecha.
   delete 
     from bethadba.periodos_calculo_fecha
@@ -69,4 +70,5 @@ begin
                         and m.i_tipos_proc = periodos_calculo_fecha.i_tipos_proc
                         and m.i_processamentos = periodos_calculo_fecha.i_processamentos
                         and m.i_competencias = periodos_calculo_fecha.i_competencias);
+
 end;
