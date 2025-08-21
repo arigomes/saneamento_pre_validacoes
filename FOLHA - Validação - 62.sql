@@ -23,4 +23,11 @@ select i_entidades,
 
 update bethadba.cargos_compl 
    set i_config_ferias = 1
- where i_config_ferias is null;
+  from bethadba.hist_cargos
+ where i_config_ferias is null
+   and cargos_compl.i_entidades = hist_cargos.i_entidades
+   and cargos_compl.i_cargos = hist_cargos.i_cargos
+   and exists(select 1
+   			 	      from bethadba.periodos
+               where periodos.i_entidades = hist_cargos.i_entidades
+                 and periodos.i_funcionarios = hist_cargos.i_funcionarios);
