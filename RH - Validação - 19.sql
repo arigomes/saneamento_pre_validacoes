@@ -5,7 +5,6 @@ select case
         when count(*) > 0
         then (select count(*)
                 from bethadba.planos_saude_tabelas_faixas) 
-        else 1
        end total_registros
   from bethadba.planos_saude;
 
