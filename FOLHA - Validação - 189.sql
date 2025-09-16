@@ -32,15 +32,15 @@ call bethadba.pg_habilitartriggers('off');
 
 if exists (select 1 from sys.systable where table_name = 'valida_189') then 
 	drop table valida_189;
-else
-	create table valida_189(
-		i_entidades integer,
-		i_cargos integer ,        
-		dt_alteracao_cargos timestamp,
-		i_niveis integer,
-		dt_alteracao_nivel timestamp,
-		rn integer);
 end if;
+	
+create table valida_189(
+	i_entidades integer,
+	i_cargos integer ,        
+	dt_alteracao_cargos timestamp,
+	i_niveis integer,
+	dt_alteracao_nivel timestamp,
+	rn integer);
 
 insert into valida_189
 select niveis.i_entidades,

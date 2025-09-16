@@ -25,16 +25,15 @@ select hs.i_entidades,
 -- Cria tabela temporária para armazenar os ajustes
 if exists (select 1 from sys.systable where table_name = 'cnv_ajuste_199') then 
 	drop table cnv_ajuste_199
-else
-	create table cnv_ajuste_199(
-		i_entidades integer,
-		menor_dt_alteracao_salario timestamp,
-		nivel_salario integer,
-		i_cargos integer,
-		dt_alteracao_cargo timestamp,
-		nivel_cargo integer);
 end if;
 
+create table cnv_ajuste_199(
+	i_entidades integer,
+	menor_dt_alteracao_salario timestamp,
+	nivel_salario integer,
+	i_cargos integer,
+	dt_alteracao_cargo timestamp,
+	nivel_cargo integer);
 
 insert into cnv_ajuste_199
 select hs.i_entidades,

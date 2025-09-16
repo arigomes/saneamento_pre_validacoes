@@ -135,14 +135,14 @@ select distinct funcionarios.i_entidades as chave_dsk1,
 -- Cria tabela temporária para ajustar os dados
 if exists (select 1 from sys.systable where table_name = 'ajusta_198_1') then 
 	drop table ajusta_198_1;
-else
-	create table   ajusta_198_1(
-		i_entidades integer,
-		i_funcionarios integer ,        
-		dataAlteracao timestamp,
-		i_niveis integer,
-		i_cargos integer);
 end if;
+
+create table   ajusta_198_1(
+	i_entidades integer,
+	i_funcionarios integer ,        
+	dataAlteracao timestamp,
+	i_niveis integer,
+	i_cargos integer);
 
 insert into ajusta_198_1
 select distinct funcionarios.i_entidades as chave_dsk1,
