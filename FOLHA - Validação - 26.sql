@@ -38,6 +38,8 @@ select left(tab.data_afastamento, 8) || '01' as nova_data_final,
 
 -- CORREÇÃO
 -- Deleta as variáveis com data inicial maior que a data de rescisão
+begin
+
 delete from bethadba.variaveis
  where exists (select 1
       			     from (select a.i_entidades,
@@ -59,7 +61,32 @@ delete from bethadba.variaveis
        			      and f.conselheiro_tutelar = 'N'
        			      and variaveis.dt_inicial > af.data_afastamento);
 
+delete from bethadba.variaveis_ocorrencias_apur
+ where exists (select 1
+      			     from (select a.i_entidades,
+      			 		    	        a.i_funcionarios,
+      			 			            max(a.dt_afastamento) as data_afastamento
+              			     from bethadba.afastamentos a
+              			     join bethadba.tipos_afast ta
+                		       on ta.i_tipos_afast = a.i_tipos_afast
+             			      where ta.classif = 8
+               			      and a.dt_afastamento <= today()
+               			      and isnull(a.dt_ultimo_dia, today()) >= today()
+             			      group by a.i_entidades, a.i_funcionarios) af
+      			     join bethadba.funcionarios f
+        		       on f.i_entidades = af.i_entidades
+       			      and f.i_funcionarios = af.i_funcionarios
+     			      where variaveis_ocorrencias_apur.i_entidades = af.i_entidades
+       			      and variaveis_ocorrencias_apur.i_funcionarios = af.i_funcionarios
+       			      and variaveis_ocorrencias_apur.i_eventos is not null
+       			      and f.conselheiro_tutelar = 'N'
+       			      and variaveis_ocorrencias_apur.dt_inicial > af.data_afastamento);
+
+end;
+
 -- Atualiza as variáveis com data final maior que a data de rescisão
+begin
+
 update bethadba.variaveis
    set dt_final = cast(left(af.data_afastamento, 7) || '-01' as date)
   from (select a.i_entidades,
@@ -80,3 +107,26 @@ update bethadba.variaveis
    and variaveis.i_eventos is not null
    and f.conselheiro_tutelar = 'N'
    and variaveis.dt_final > af.data_afastamento;
+
+update bethadba.variaveis_ocorrencias_apur
+   set dt_final = cast(left(af.data_afastamento, 7) || '-01' as date)
+  from (select a.i_entidades,
+               a.i_funcionarios,
+               max(a.dt_afastamento) as data_afastamento
+          from bethadba.afastamentos a
+          join bethadba.tipos_afast ta
+            on ta.i_tipos_afast = a.i_tipos_afast
+         where ta.classif = 8
+           and a.dt_afastamento <= today()
+           and isnull(a.dt_ultimo_dia, today()) >= today()
+         group by a.i_entidades, a.i_funcionarios) af
+  join bethadba.funcionarios f
+    on f.i_entidades = af.i_entidades
+   and f.i_funcionarios = af.i_funcionarios
+ where variaveis_ocorrencias_apur.i_entidades = af.i_entidades
+   and variaveis_ocorrencias_apur.i_funcionarios = af.i_funcionarios
+   and variaveis_ocorrencias_apur.i_eventos is not null
+   and f.conselheiro_tutelar = 'N'
+   and variaveis_ocorrencias_apur.dt_final > af.data_afastamento;
+
+end;
