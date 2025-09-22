@@ -1,7 +1,7 @@
 [ODBC]
 DRIVER=Adaptive Server Anywhere 9.0
-ENG=folharh_fam
-DBN=folharh_fam
-LINKS=TCPIP(HOST=localhost;PORT=9003)
+ENG=folharh_pm
+DBN=folharh_pm
+LINKS=TCPIP(HOST=localhost;PORT=9002)
 UID=desbth
 PWD=HsV0zk3yXYACypmaRsZ1m5POCC4v2y
