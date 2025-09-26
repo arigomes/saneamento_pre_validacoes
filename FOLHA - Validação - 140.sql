@@ -71,7 +71,7 @@ begin
 	   and a.i_funcionarios = b.i_funcionarios
 	   and diferencaPeriodo = 1
 	   and diferenca <> 1 
-	   and (canceladoA = 'false' and canceladoB = 'false')
+	   --and (canceladoA = 'false' and canceladoB = 'false')
 	 order by a.i_entidades, a.i_funcionarios, a.i_periodos, a.dt_aquis_ini
   
   do

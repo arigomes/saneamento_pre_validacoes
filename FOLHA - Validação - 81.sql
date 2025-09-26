@@ -11,6 +11,6 @@ select i_pessoas as pessoa
 -- Atualiza a inscrição municipal para '0' onde o tipo de pessoa é 'J' e a inscrição municipal tem mais de 9 dígitos
 
 update bethadba.pessoas
-   set inscricao_municipal = '0'
+   set inscricao_municipal = null
  where tipo_pessoa = 'J'
    and length(inscricao_municipal) > 9;
