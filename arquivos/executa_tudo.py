@@ -1,6 +1,7 @@
 import subprocess
 import os
 import pyodbc
+from datetime import datetime
 
 # Caminhos
 pasta_saida = r'c:\Scripts\saneamento_pre_validacoes\arquivos\saneamentoValidado'
@@ -28,13 +29,14 @@ titulo_correção = ""
 for linha in comandos.splitlines():
     if linha.strip().startswith('-- '):
         if comando_buffer.strip():
+            data_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             try:
                 cursor.execute(comando_buffer)
                 conn.commit()
-                print(f"Correção executada: {titulo_correção}")
+                print(f"Correção executada: {titulo_correção} | Data e hora: {data_hora}")
             except Exception as e:
                 conn.rollback()
-                print(f"Erro ao executar correção {titulo_correção}:\n{e}\nComando SQL:\n{comando_buffer}\n")
+                print(f"Erro ao executar correção {titulo_correção} | Data e hora: {data_hora}:\n{e}\nComando SQL:\n{comando_buffer}\n")
         titulo_correção = linha.strip()
         comando_buffer = ""
     else:
@@ -42,13 +44,14 @@ for linha in comandos.splitlines():
 
 # Executa o último comando, se houver
 if comando_buffer.strip():
+    data_hora = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     try:
         cursor.execute(comando_buffer)
         conn.commit()
-        print(f"Correção executada: {titulo_correção}")
+        print(f"Correção executada: {titulo_correção} | Data e hora: {data_hora}")
     except Exception as e:
         conn.rollback()
-        print(f"Erro ao executar correção {titulo_correção}:\n{e}\nComando SQL:\n{comando_buffer}\n")
+        print(f"Erro ao executar correção {titulo_correção} | Data e hora: {data_hora}:\n{e}\nComando SQL:\n{comando_buffer}\n")
 
 cursor.close()
 conn.close()

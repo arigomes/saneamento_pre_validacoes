@@ -146,15 +146,18 @@ update bethadba.organogramas_caract_cfg
  where bethadba.organogramas_caract_cfg.id_organograma_caract_cfg = ordenados.id_organograma_caract_cfg;
 
 -- bethadba.funcionarios_caract_cfg
-with ordenados as (
-  select id_funcionario_caract_cfg,
-         row_number() over (order by ordem, id_funcionario_caract_cfg) as nova_ordem
-    from bethadba.funcionarios_caract_cfg
-)
-update bethadba.funcionarios_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.funcionarios_caract_cfg.id_funcionario_caract_cfg = ordenados.id_funcionario_caract_cfg;
+begin
+	select i_caracteristicas,
+	       row_number() over (order by ordem, i_caracteristicas) as nova_ordem
+	  into #temp_ordem
+	  from bethadba.funcionarios_caract_cfg;
+	
+	-- Etapa 2: Atualizar a tabela original
+	update bethadba.funcionarios_caract_cfg
+	   set bethadba.funcionarios_caract_cfg.ordem = t.nova_ordem
+  	  from #temp_ordem as t
+	 where bethadba.funcionarios_caract_cfg.i_caracteristicas = t.i_caracteristicas;
+end;
 
 -- bethadba.hist_cargos_caract_cfg
 with ordenados as (
