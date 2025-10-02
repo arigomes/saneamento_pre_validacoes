@@ -11,6 +11,6 @@ select i_pessoas as pessoa
 -- Atualiza o CNPJ inválido para um CNPJ válido fictício
 
 update bethadba.pessoas_juridicas
-   set cnpj = right('000000000000' || cast((row_number() over (order by i_pessoas)) as varchar(12)), 12) || '91'
+   set cnpj = null
  where cnpj is not null
    and bethadba.dbf_valida_cgc_cpf(cnpj, null, 'J') = 0;

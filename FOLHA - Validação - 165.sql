@@ -21,11 +21,11 @@ select dc.i_entidades,
 
 update bethadba.dados_calc
   join bethadba.movimentos m
-    on dc.i_entidades = m.i_entidades
-   and dc.i_funcionarios = m.i_funcionarios
-   and dc.i_tipos_proc = m.i_tipos_proc
-   and dc.i_processamentos = m.i_processamentos
-   and dc.i_competencias = m.i_competencias
-   set i_tipos_proc = 11
- where dc.i_tipos_proc not in (11, 42)
+    on dados_calc.i_entidades = m.i_entidades
+   and dados_calc.i_funcionarios = m.i_funcionarios
+   and dados_calc.i_tipos_proc = m.i_tipos_proc
+   and dados_calc.i_processamentos = m.i_processamentos
+   and dados_calc.i_competencias = m.i_competencias
+   set dados_calc.i_tipos_proc = 11
+ where dados_calc.i_tipos_proc not in (11, 42)
    and m.mov_resc = 'S';
