@@ -12,4 +12,4 @@ select i_motivos_altponto,
 
 update bethadba.motivos_altponto
    set descricao = left(descricao, 30)
- where length(descricao) > 30;
+ where length(descricao) > 30;

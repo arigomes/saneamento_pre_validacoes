@@ -13,8 +13,8 @@ having quantidade > 1;
 -- CORREÇÃO
 -- Atualiza os nomes dos grupos funcionais repetidos, adicionando o identificador da entidade ao final do nome
 
-update bethadba.grupos g
-   set nome = i_grupos || ' - ' || nome
+update bethadba.grupos
+   set nome = i_entidades || ' - ' || nome
  where nome in (select nome
                   from bethadba.grupos
                  group by nome

@@ -108,22 +108,6 @@ end;
 
 commit;
 
--- FOLHA - Validação - 103
-
--- Atualiza a data de admissão do funcionário para o dia seguinte da rescisão
--- Isso garante que a data de admissão não seja anterior à data de rescisão
-
-update bethadba.funcionarios
-   set funcionarios.dt_admissao = dateadd(day, 1, rescisoes.dt_rescisao)
-  from bethadba.beneficiarios , bethadba.rescisoes , bethadba.funcionarios 
- where beneficiarios.i_entidades = rescisoes.i_entidades
-   and beneficiarios.i_instituidor = rescisoes.i_funcionarios
-   and beneficiarios.i_funcionarios = funcionarios.i_funcionarios
-   and beneficiarios.i_entidades = funcionarios.i_entidades 
-   and funcionarios.dt_admissao<=  rescisoes.dt_rescisao;
-
-commit;
-
 -- FOLHA - Validação - 107
 
 -- Atualiza a data final da lotação para a data de fim do vínculo temporário apenas para os casos onde a data final da lotação é maior que a data de fim
@@ -162,67 +146,88 @@ drop table tmp_cnpj;
 
 commit;
 
--- FOLHA - Validação - 110
+-- FOLHA - Validação - 112
 
--- Atualiza a data do último dia do afastamento para funcionários que possuem afastamentos concomitantes
-
-update bethadba.afastamentos a
-  join bethadba.afastamentos b
-    on a.i_entidades = b.i_entidades
+-- Atualiza a data inicial do afastamento para o dia seguinte ao término das férias para os funcionários que possuem afastamentos concomitantes com férias
+                
+update bethadba.afastamentos as a
+   set a.dt_afastamento = DATEADD(dd, 1, b.dt_gozo_fin)
+  from bethadba.ferias as b
+ where a.dt_afastamento between b.dt_gozo_ini and b.dt_gozo_fin
    and a.i_funcionarios = b.i_funcionarios
-   and (a.dt_afastamento between b.dt_afastamento and b.dt_ultimo_dia or a.dt_ultimo_dia between b.dt_afastamento and b.dt_ultimo_dia)
-   and (a.dt_afastamento <> b.dt_afastamento or a.dt_ultimo_dia <> b.dt_ultimo_dia)
-   set a.dt_ultimo_dia = dateadd(dd, -1, b.dt_afastamento)
- where a.i_entidades = b.i_entidades
-   and a.i_funcionarios = b.i_funcionarios
-   and (a.dt_afastamento between b.dt_afastamento and b.dt_ultimo_dia or a.dt_ultimo_dia between b.dt_afastamento and b.dt_ultimo_dia)
-   and (a.dt_afastamento <> b.dt_afastamento or a.dt_ultimo_dia <> b.dt_ultimo_dia);
+   and not exists (select 1
+			               from bethadba.afastamentos as a2
+      		          where a2.i_funcionarios = a.i_funcionarios
+			                and a2.dt_afastamento = DATEADD(dd, 1, b.dt_gozo_fin));
 
 commit;
 
--- FOLHA - Validação - 117
+-- FOLHA - Validação - 115
 
--- Insere o histórico salarial para os funcionários que não possuem histórico, assumindo o salário atual como o último
+-- Insere o histórico de funcionários para os funcionários que não possuem histórico, utilizando os dados atuais dos funcionários
 
-insert into bethadba.hist_salariais
-       (i_entidades,
-        i_funcionarios,
-        dt_alteracoes,
-        i_niveis,
-        i_clas_niveis,
-        i_referencias,
-        i_motivos_altsal,
-        i_atos,salario,
-        horas_mes,
-        horas_sem,
-        observacao,
-        controla_jornada_parc,
-        deduz_iss,
-        aliq_iss,
-        qtd_dias_servico,
-        dt_alteracao_esocial,
-        dt_chave_esocial)
-select f.i_entidades,
-       f.i_funcionarios,
-       CAST(f.dt_admissao AS datetime),
-       null,
-       null,
-       null,
-       null,
-       null,
-       0.01,
-       200.00,
-       40.00,
-       null,
-       null,
-       null,
-       null,
-       null,
-       null,
-       f.dt_admissao -- já está no formato date
-  from bethadba.funcionarios f
- where f.i_funcionarios not in (select hs.i_funcionarios
-                                  from bethadba.hist_salariais as hs);
+insert into bethadba.hist_funcionarios(i_entidades,i_funcionarios,dt_alteracoes,i_config_organ,i_organogramas,i_grupos,i_vinculos,i_pessoas,i_bancos,i_agencias,i_pessoas_contas,i_horarios,
+func_princ,i_agentes_nocivos,optante_fgts,prev_federal,prev_estadual,fundo_ass,fundo_prev,ocorrencia_sefip,forma_pagto,multiplic,tipo_contrato,fundo_financ,remunerado_cargo_efetivo,
+i_turmas,num_quadro_cp,num_cp,provisorio,bate_cartao,i_pessoas_estagio,dt_final_estagio,nivel_curso_estagio,num_apolice_estagio,estagio_obrigatorio_estagio,i_agente_integracao_estagio,
+i_supervisor_estagio,controle_jornada,grau_exposicao,tipo_admissao,tipo_trabalhador,i_sindicatos,seguro_vida_estagio,categoria,desc_salario_variavel,duracao_ben,dt_vencto,tipo_beneficio,
+i_responsaveis,tipo_ingresso,aposentado,recebe_abono)
+select a.i_entidades,
+       a.i_funcionarios,
+       a.dt_admissao as dt_alteracoes,
+       1 as i_config_organ,
+       '0101' as i_organogramas,
+       1 as i_grupos,
+       5 as i_vinculos,
+       a.i_pessoas,
+       null as i_bancos,
+       null as i_agencias,
+       null as i_pessoas_contas,
+       null as i_horarios,
+       null as func_princ,
+       null as i_agentes_nocivos,
+       'N' as optante_fgts,
+       'S' as prev_federal,
+       'N' as prev_estadual,
+       'N' as fundo_ass,
+       'N' as fundo_prev,
+       0 as ocorrencia_sefip,
+       'R' as forma_pagto,
+       1 as multiplic,
+       null as tipo_contrato,
+       'N' as fundo_financ,
+       'N' as remunerado_cargo_efetivo,
+       null as i_turmas,
+       null as num_quadro_cp,
+       null as num_cp,
+       null as provisorio,
+       null as bate_cartao,
+       null as i_pessoas_estagio,
+       null as dt_final_estagio,
+       null as nivel_curso_estagio,
+       null as num_apolice_estagio,
+       null as estagio_obrigatorio_estagio,
+       null as i_agente_integracao_estagio,
+       null as i_supervisor_estagio,
+       null as controle_jornada,
+       null as grau_exposicao,
+       null as tipo_admissao,
+       null as tipo_trabalhador,
+       null as i_sindicatos,
+       null as seguro_vida_estagio,
+       'M' as categoria,
+       null as desc_salario_variavel,
+       null as duracao_ben,
+       null as dt_vencto,
+       null as tipo_beneficio,
+       null as i_responsaveis,
+       null as tipo_ingresso,
+       null as aposentado,
+       null as recebe_abono
+  from bethadba.funcionarios a
+ where i_funcionarios in (select z.i_funcionarios
+                            from bethadba.funcionarios z
+                           where i_funcionarios not in (select i_funcionarios
+                                                          from bethadba.hist_funcionarios));
 
 commit;
 
@@ -264,27 +269,6 @@ delete from bethadba.variaveis
 
 commit;
 
--- FOLHA - Validação - 120
-
--- Atualiza a data de homologação para 30 dias após o início das inscrições
-
-update bethadba.candidatos 
-  left join bethadba.concursos
-    on candidatos.i_concursos = concursos.i_concursos
-   set dt_homolog = dateadd(dd,30,dt_ini_insc)
- where i_candidatos in (select candidatos.i_candidatos
-                          from bethadba.candidatos
-                          left join bethadba.concursos
-                            on candidatos.i_concursos = concursos.i_concursos
-                         where candidatos.dt_nomeacao is null
-                           and candidatos.dt_posse is null
-                           and candidatos.dt_doc_nao_posse is null
-                           and candidatos.dt_prorrog_posse is null
-                           and concursos.dt_homolog is null)
-   and dt_homolog is null;
-
-commit;
-
 -- FOLHA - Validação - 127
 
 -- Atualiza os campos CNPJ que estão nulos para 0 para que não sejam considerados na validação e não gere erro de validação.
@@ -300,7 +284,7 @@ commit;
 -- Insere os registros de pessoas fisicas que não possuem historico na tabela de historico de pessoas fisicas.
 
 insert into bethadba.hist_pessoas_fis (i_pessoas, dt_alteracoes, dt_nascimento, sexo, rg, orgao_emis_rg, uf_emis_rg, dt_emis_rg, cpf, num_pis, dt_pis, carteira_prof, serie_cart, uf_emis_carteira, dt_emis_carteira, zona_eleitoral, secao_eleitoral, titulo_eleitor, grau_instrucao, estado_civil, cnh, categoria_cnh, dt_vencto_cnh, dt_primeira_cnh, observacoes_cnh, dt_emissao_cnh, i_estados_cnh, ric, orgao_ric, dt_emissao_ric, raca, certidao, ddd, telefone, ddd_cel, celular, email, tipo_validacao, tipo_pessoa, ident_estrangeiro, dt_validade_est, tipo_visto_est, cart_trab_est, serie_cart_est, dt_exp_cart_est, dt_val_cart_est, i_paises, orgao_emissor_est, dt_emissao_est, i_paises_nacionalidade, data_chegada_est, ano_chegada_est, casado_brasileiro_est, filho_brasileiro_est, i_situacao_estrangeiro, residencia_fiscal_exterior, i_pais_residencia_fiscal, indicativo_nif, numero_identificacao_fiscal, forma_tributacao)
-select i_pessoas, '2024-01-01', dt_nascimento, sexo, rg, orgao_emis_rg, uf_emis_rg, dt_emis_rg, cpf, num_pis, dt_pis , carteira_prof , serie_cart , uf_emis_carteira , dt_emis_carteira, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 'F', null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
+select i_pessoas, dt_nascimento, dt_nascimento, sexo, rg, orgao_emis_rg, uf_emis_rg, dt_emis_rg, cpf, num_pis, dt_pis , carteira_prof , serie_cart , uf_emis_carteira , dt_emis_carteira, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, 'F', null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
   from bethadba.pessoas_fisicas 
  where i_pessoas in (select i_pessoas 
 		       from bethadba.pessoas_fisicas as pf 
@@ -321,7 +305,19 @@ update bethadba.atos_func as af
 
 commit;
 
---os.nome)) > 1
+-- FOLHA - Validação - 13
+
+-- Atualiza os nomes dos bairros repetidos para evitar duplicidade
+
+update bethadba.bairros
+   set bairros.nome = bairros.nome || ' - (Cod: ' || i_bairros  || ')'
+ where bairros.i_bairros in (select codigo
+				   		       from (select max(i_bairros) as codigo,
+							   				nome
+      				  				   from bethadba.bairros
+      				  				  where (select count(i_bairros)
+	   		 		 						   from bethadba.bairros as b
+       		 			 					  where trim(b.nome) = trim(bairros.nome)) > 1
        		 		  	 	  		  group by nome) as maior);
 
 commit;
@@ -343,6 +339,16 @@ commit;
 update bethadba.hist_pessoas_fis
    set dt_alteracoes = DATEADD(year, 18, dt_nascimento)
  where dt_nascimento > dt_alteracoes;
+
+commit;
+
+-- FOLHA - Validação - 132
+
+-- Atualiza o campo indicativo_entidade_educativa para 'N' onde está nulo (considerando que a entidade educacional não é obrigatória)
+
+update bethadba.hist_entidades_compl
+   set indicativo_entidade_educativa = 'N'
+ where indicativo_entidade_educativa is null;
 
 commit;
 
@@ -409,43 +415,14 @@ update bethadba.variaveis
 
 commit;
 
--- FOLHA - Validação - 135
+-- FOLHA - Validação - 138
 
--- Excluir os registros de variáveis que não possuem motivo de rescisão válido e que estão com data de cessação posterior a data de rescisão
+-- Atualiza a data de vigência final para 100 anos a partir da data atual para os registros que possuem data de vigência final maior ou igual a 100 anos a partir da data atual.
+-- Isso garante que os registros estejam dentro de um intervalo de vigência válido.
 
-delete bethadba.variaveis
- where i_entidades in (select hf.i_entidades
-                         from bethadba.hist_funcionarios hf
-                        inner join bethadba.hist_cargos hc
-                           on hf.i_entidades = hc.i_entidades 
-                          and hf.i_funcionarios = hc.i_funcionarios 
-                          and hf.dt_alteracoes <= hc.dt_alteracoes 
-                        inner join bethadba.funcionarios f
-                           on f.i_funcionarios = hf.i_funcionarios 
-                          and f.i_entidades = hf.i_entidades
-                        inner join bethadba.rescisoes r
-                           on r.i_funcionarios = hf.i_funcionarios
-                          and r.i_entidades = hf.i_entidades
-                        inner join bethadba.variaveis v2
-                           on r.i_entidades = v2.i_entidades 
-                          and r.i_funcionarios = v2.i_funcionarios 
-                        inner join bethadba.vinculos v
-                           on v.i_vinculos = hf.i_vinculos
-                         left join (select resc.i_entidades,
-                                           resc.i_funcionarios,
-                                           max(resc.dt_rescisao) as dt_rescisao
-                                      from bethadba.rescisoes resc
-                                      join bethadba.motivos_resc mot
-                                        on resc.i_motivos_resc = mot.i_motivos_resc
-                                     where mot.dispensados = 4
-                                       and resc.dt_canc_resc is null
-                                     group by resc.i_entidades, resc.i_funcionarios) as sub
-                           on hf.i_entidades = sub.i_entidades
-                          and hf.i_funcionarios = sub.i_funcionarios
-                        where r.i_motivos_apos is not null 
-                          and sub.dt_rescisao is not null 
-                          and (sub.dt_rescisao < v2.dt_inicial or sub.dt_rescisao < v2.dt_final)
-                        order by hf.i_entidades, hf.i_funcionarios);
+update bethadba.bases_calc_outras_empresas
+   set dt_vigencia_fin = date(dateadd(year,100,GETDATE()))
+ where dt_vigencia_fin >= date(dateadd(year,100,GETDATE()));
 
 commit;
 
@@ -488,7 +465,7 @@ begin
 	   and a.i_funcionarios = b.i_funcionarios
 	   and diferencaPeriodo = 1
 	   and diferenca <> 1 
-	   and (canceladoA = 'false' and canceladoB = 'false')
+	   --and (canceladoA = 'false' and canceladoB = 'false')
 	 order by a.i_entidades, a.i_funcionarios, a.i_periodos, a.dt_aquis_ini
   
   do
@@ -505,285 +482,6 @@ begin
        and p.i_periodos = w_periodo
   end for;
 end;
-
-commit;
-
--- FOLHA - Validação - 142
-
--- A correção será feita através de uma atualização da ordem das características, garantindo que cada uma tenha uma ordem única.
-
--- bethadba.cargos_caract_cfg
-with ordenados as (
-  select id_cargo_caract_cfg,
-         row_number() over (order by ordem, id_cargo_caract_cfg) as nova_ordem
-    from bethadba.cargos_caract_cfg
-)
-update bethadba.cargos_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.cargos_caract_cfg.id_cargo_caract_cfg = ordenados.id_cargo_caract_cfg;
-
--- bethadba.eventos_caract_cfg
-with ordenados as (
-  select id_evento_caract_cfg,
-         row_number() over (order by ordem, id_evento_caract_cfg) as nova_ordem
-    from bethadba.eventos_caract_cfg
-)
-update bethadba.eventos_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.eventos_caract_cfg.id_evento_caract_cfg = ordenados.id_evento_caract_cfg;
-
--- bethadba.tipos_cargos_caract_cfg
-with ordenados as (
-  select id_tipo_cargo_caract_cfg,
-         row_number() over (order by ordem, id_tipo_cargo_caract_cfg) as nova_ordem
-    from bethadba.tipos_cargos_caract_cfg
-)
-update bethadba.tipos_cargos_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.tipos_cargos_caract_cfg.id_tipo_cargo_caract_cfg = ordenados.id_tipo_cargo_caract_cfg;
-
--- bethadba.tipos_afast_caract_cfg
-with ordenados as (
-  select id_tipo_afast_caract_cfg,
-         row_number() over (order by ordem, id_tipo_afast_caract_cfg) as nova_ordem
-    from bethadba.tipos_afast_caract_cfg
-)
-update bethadba.tipos_afast_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.tipos_afast_caract_cfg.id_tipo_afast_caract_cfg = ordenados.id_tipo_afast_caract_cfg;
-
--- bethadba.atos_caract_cfg
-with ordenados as (
-  select id_ato_caract_cfg,
-         row_number() over (order by ordem, id_ato_caract_cfg) as nova_ordem
-    from bethadba.atos_caract_cfg
-)
-update bethadba.atos_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.atos_caract_cfg.id_ato_caract_cfg = ordenados.id_ato_caract_cfg;
-
--- bethadba.areas_atuacao_caract_cfg
-with ordenados as (
-  select id_area_atuacao_caract_cfg,
-         row_number() over (order by ordem, id_area_atuacao_caract_cfg) as nova_ordem
-    from bethadba.areas_atuacao_caract_cfg
-)
-update bethadba.areas_atuacao_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.areas_atuacao_caract_cfg.id_area_atuacao_caract_cfg = ordenados.id_area_atuacao_caract_cfg;
-
--- bethadba.empresas_ant_caract_cfg
-with ordenados as (
-  select id_empresa_ant_caract_cfg,
-         row_number() over (order by ordem, id_empresa_ant_caract_cfg) as nova_ordem
-    from bethadba.empresas_ant_caract_cfg
-)
-update bethadba.empresas_ant_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.empresas_ant_caract_cfg.id_empresa_ant_caract_cfg = ordenados.id_empresa_ant_caract_cfg;
-
--- bethadba.niveis_caract_cfg
-with ordenados as (
-  select id_nivel_caract_cfg,
-         row_number() over (order by ordem, id_nivel_caract_cfg) as nova_ordem
-    from bethadba.niveis_caract_cfg
-)
-update bethadba.niveis_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.niveis_caract_cfg.id_nivel_caract_cfg = ordenados.id_nivel_caract_cfg;
-
--- bethadba.organogramas_caract_cfg
-with ordenados as (
-  select id_organograma_caract_cfg,
-         row_number() over (order by ordem, id_organograma_caract_cfg) as nova_ordem
-    from bethadba.organogramas_caract_cfg
-)
-update bethadba.organogramas_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.organogramas_caract_cfg.id_organograma_caract_cfg = ordenados.id_organograma_caract_cfg;
-
--- bethadba.funcionarios_caract_cfg
-begin
-	select i_caracteristicas,
-	       row_number() over (order by ordem, i_caracteristicas) as nova_ordem
-	  into #temp_ordem
-	  from bethadba.funcionarios_caract_cfg;
-	
-	-- Etapa 2: Atualizar a tabela original
-	update bethadba.funcionarios_caract_cfg
-	   set bethadba.funcionarios_caract_cfg.ordem = t.nova_ordem
-  	  from #temp_ordem as t
-	 where bethadba.funcionarios_caract_cfg.i_caracteristicas = t.i_caracteristicas;
-end;
-
--- bethadba.hist_cargos_caract_cfg
-with ordenados as (
-  select id_hist_cargo_caract_cfg,
-         row_number() over (order by ordem, id_hist_cargo_caract_cfg) as nova_ordem
-    from bethadba.hist_cargos_caract_cfg
-)
-update bethadba.hist_cargos_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.hist_cargos_caract_cfg.id_hist_cargo_caract_cfg = ordenados.id_hist_cargo_caract_cfg;
-
--- bethadba.pessoas_caract_cfg
-with ordenados as (
-  select id_pessoa_caract_cfg,
-         row_number() over (order by ordem, id_pessoa_caract_cfg) as nova_ordem
-    from bethadba.pessoas_caract_cfg
-)
-update bethadba.pessoas_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.pessoas_caract_cfg.id_pessoa_caract_cfg = ordenados.id_pessoa_caract_cfg;
-
-commit;
-
--- FOLHA - Validação - 143
-
--- A correção será feita através de uma atualização da ordem dos campos adicionais, garantindo que cada um tenha uma ordem única.
-
--- bethadba.cargos_caract_cfg
-with ordenados as (
-  select id_cargo_caract_cfg,
-         row_number() over (order by ordem, id_cargo_caract_cfg) as nova_ordem
-    from bethadba.cargos_caract_cfg
-)
-update bethadba.cargos_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.cargos_caract_cfg.id_cargo_caract_cfg = ordenados.id_cargo_caract_cfg;
-
--- bethadba.eventos_caract_cfg
-with ordenados as (
-  select id_evento_caract_cfg,
-         row_number() over (order by ordem, id_evento_caract_cfg) as nova_ordem
-    from bethadba.eventos_caract_cfg
-)
-update bethadba.eventos_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.eventos_caract_cfg.id_evento_caract_cfg = ordenados.id_evento_caract_cfg;
-
--- bethadba.tipos_cargos_caract_cfg
-with ordenados as (
-  select id_tipo_cargo_caract_cfg,
-         row_number() over (order by ordem, id_tipo_cargo_caract_cfg) as nova_ordem
-    from bethadba.tipos_cargos_caract_cfg
-)
-update bethadba.tipos_cargos_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.tipos_cargos_caract_cfg.id_tipo_cargo_caract_cfg = ordenados.id_tipo_cargo_caract_cfg;
-
--- bethadba.tipos_afast_caract_cfg
-with ordenados as (
-  select id_tipo_afast_caract_cfg,
-         row_number() over (order by ordem, id_tipo_afast_caract_cfg) as nova_ordem
-    from bethadba.tipos_afast_caract_cfg
-)
-update bethadba.tipos_afast_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.tipos_afast_caract_cfg.id_tipo_afast_caract_cfg = ordenados.id_tipo_afast_caract_cfg;
-
--- bethadba.atos_caract_cfg
-with ordenados as (
-  select id_ato_caract_cfg,
-         row_number() over (order by ordem, id_ato_caract_cfg) as nova_ordem
-    from bethadba.atos_caract_cfg
-)
-update bethadba.atos_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.atos_caract_cfg.id_ato_caract_cfg = ordenados.id_ato_caract_cfg;
-
--- bethadba.areas_atuacao_caract_cfg
-with ordenados as (
-  select id_area_atuacao_caract_cfg,
-         row_number() over (order by ordem, id_area_atuacao_caract_cfg) as nova_ordem
-    from bethadba.areas_atuacao_caract_cfg
-)
-update bethadba.areas_atuacao_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.areas_atuacao_caract_cfg.id_area_atuacao_caract_cfg = ordenados.id_area_atuacao_caract_cfg;
-
--- bethadba.empresas_ant_caract_cfg
-with ordenados as (
-  select id_empresa_ant_caract_cfg,
-         row_number() over (order by ordem, id_empresa_ant_caract_cfg) as nova_ordem
-    from bethadba.empresas_ant_caract_cfg
-)
-update bethadba.empresas_ant_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.empresas_ant_caract_cfg.id_empresa_ant_caract_cfg = ordenados.id_empresa_ant_caract_cfg;
-
--- bethadba.niveis_caract_cfg
-with ordenados as (
-  select id_nivel_caract_cfg,
-         row_number() over (order by ordem, id_nivel_caract_cfg) as nova_ordem
-    from bethadba.niveis_caract_cfg
-)
-update bethadba.niveis_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.niveis_caract_cfg.id_nivel_caract_cfg = ordenados.id_nivel_caract_cfg;
-
--- bethadba.organogramas_caract_cfg
-with ordenados as (
-  select id_organograma_caract_cfg,
-         row_number() over (order by ordem, id_organograma_caract_cfg) as nova_ordem
-    from bethadba.organogramas_caract_cfg
-)
-update bethadba.organogramas_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.organogramas_caract_cfg.id_organograma_caract_cfg = ordenados.id_organograma_caract_cfg;
-
--- bethadba.funcionarios_caract_cfg
-with ordenados as (
-  select id_funcionario_caract_cfg,
-         row_number() over (order by ordem, id_funcionario_caract_cfg) as nova_ordem
-    from bethadba.funcionarios_caract_cfg
-)
-update bethadba.funcionarios_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.funcionarios_caract_cfg.id_funcionario_caract_cfg = ordenados.id_funcionario_caract_cfg;
-
--- bethadba.hist_cargos_caract_cfg
-with ordenados as (
-  select id_hist_cargo_caract_cfg,
-         row_number() over (order by ordem, id_hist_cargo_caract_cfg) as nova_ordem
-    from bethadba.hist_cargos_caract_cfg
-)
-update bethadba.hist_cargos_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.hist_cargos_caract_cfg.id_hist_cargo_caract_cfg = ordenados.id_hist_cargo_caract_cfg;
-
--- bethadba.pessoas_caract_cfg
-with ordenados as (
-  select id_pessoa_caract_cfg,
-         row_number() over (order by ordem, id_pessoa_caract_cfg) as nova_ordem
-    from bethadba.pessoas_caract_cfg
-)
-update bethadba.pessoas_caract_cfg
-   set ordem = ordenados.nova_ordem
-  from ordenados
- where bethadba.pessoas_caract_cfg.id_pessoa_caract_cfg = ordenados.id_pessoa_caract_cfg;
 
 commit;
 
@@ -834,6 +532,18 @@ commit;
 
 begin
 
+  -- Caso positivo, excluir o registro da tabela periodos_calculo_fecha.
+  delete 
+    from bethadba.periodos_calculo_fecha
+   where periodos_calculo_fecha.i_tipos_proc in (11, 41, 42)
+     and not exists (select 1
+                       from bethadba.movimentos as m 
+                      where m.i_funcionarios = periodos_calculo_fecha.i_funcionarios
+                        and m.i_entidades = periodos_calculo_fecha.i_entidades
+                        and m.i_tipos_proc = periodos_calculo_fecha.i_tipos_proc
+                        and m.i_processamentos = periodos_calculo_fecha.i_processamentos
+                        and m.i_competencias = periodos_calculo_fecha.i_competencias);
+	
   -- Caso positivo, excluir o registro da tabela bases_calc.
   delete 
     from bethadba.bases_calc
@@ -849,27 +559,15 @@ begin
   -- Caso positivo, excluir o registro da tabela dados_calc.
   delete
     from bethadba.dados_calc
-  where dados_calc.i_tipos_proc in (11, 41, 42)
-    and dados_calc.dt_fechamento is not null
-    and not exists (select 1
-                      from bethadba.movimentos as m 
+   where dados_calc.i_tipos_proc in (11, 41, 42)
+     and dados_calc.dt_fechamento is not null
+     and not exists (select 1
+                       from bethadba.movimentos as m 
                       where m.i_funcionarios = dados_calc.i_funcionarios
                         and m.i_entidades = dados_calc.i_entidades
                         and m.i_tipos_proc = dados_calc.i_tipos_proc
                         and m.i_processamentos = dados_calc.i_processamentos
                         and m.i_competencias = dados_calc.i_competencias);
-
-  -- Caso positivo, excluir o registro da tabela periodos_calculo_fecha.
-  delete 
-    from bethadba.periodos_calculo_fecha
-   where periodos_calculo_fecha.i_tipos_proc in (11, 41, 42)
-     and not exists (select 1
-                       from bethadba.movimentos as m 
-                      where m.i_funcionarios = periodos_calculo_fecha.i_funcionarios
-                        and m.i_entidades = periodos_calculo_fecha.i_entidades
-                        and m.i_tipos_proc = periodos_calculo_fecha.i_tipos_proc
-                        and m.i_processamentos = periodos_calculo_fecha.i_processamentos
-                        and m.i_competencias = periodos_calculo_fecha.i_competencias);
 
 end;
 
@@ -941,6 +639,51 @@ update bethadba.ruas
 
 commit;
 
+-- FOLHA - Validação - 151
+
+-- Inserir a pessoa do pensionistas como dependente do instituidor
+
+insert into bethadba.dependentes (i_pessoas,i_dependentes,grau,dt_casamento,dt_ini_depende,mot_ini_depende,dt_fin_depende,mot_fin_depende,ex_conjuge,descricao)
+select pessoaInstituidor = (select f2.i_pessoas
+                              from bethadba.funcionarios as f2 
+                             where f2.i_entidades = b.i_entidades_inst
+                               and f2.i_funcionarios = b.i_instituidor),
+       f.i_pessoas,
+       1 as grau,
+       null as dt_casamento,
+       dt_ini_depende = isnull(isnull((select dt_nascimento
+                                         from bethadba.pessoas_fisicas
+                                        where i_pessoas = f.i_pessoas
+                                          and dt_nascimento is not null
+                                          and dt_nascimento <> '01/01/1900'), (select dt_nascimento
+                                                                                 from bethadba.pessoas_fisicas
+                                                                                where i_pessoas = (select f2.i_pessoas
+                                                                                                     from bethadba.funcionarios as f2 
+                                                                                                    where f2.i_entidades = b.i_entidades_inst
+                                                                                                      and f2.i_funcionarios = b.i_instituidor)
+                                                                                  and dt_nascimento is not null
+                                                                                  and dt_nascimento <> '01/01/1900')), null),
+       1 as mot_ini_depende,
+       null as dt_fin_depende,
+       null as mot_fin_depende,
+       null as ex_conjuge,
+       'Dependente - Pensionista' as descricao
+  from bethadba.funcionarios as f
+  join bethadba.beneficiarios as b
+    on f.i_entidades = b.i_entidades
+   and f.i_funcionarios = b.i_funcionarios
+ where f.tipo_func = 'B' 
+   and f.tipo_pens in (1, 2)
+   and not exists (select 1
+                     from bethadba.dependentes as d
+                    where d.i_pessoas = (select f2.i_pessoas
+                                           from bethadba.funcionarios as f2 
+                                          where f2.i_entidades = b.i_entidades_inst
+                                            and f2.i_funcionarios = b.i_instituidor)
+                      and d.i_dependentes = f.i_pessoas);
+
+commit;
+
 -- FOLHA - Validação - 153
 
 -- Atualizar a lotação fisica principal 'S' para apenas uma por funcionário, setando as demais para 'N' considerando como principal a lotação física com data inicial menor e sem data final
@@ -1004,21 +747,14 @@ commit;
 
 -- Deletar duplicidade de dependentes com mais de uma configuração de IRRF quando o dependente for o mesmo
 
-delete from bethadba.dependentes_func
- where rowid in (select df.rowid
-                   from (select i_dependentes,
-                                dep_irrf,
-                                row_number() over (partition by i_dependentes order by rowid) as rn
-                           from bethadba.dependentes_func) df
-                  where df.rn > 1
-                    and df.i_dependentes in (select i_dependentes
-                                               from (select i_dependentes,
-                                                            count(i_dependentes) as total
-                                                       from (select distinct i_dependentes,
-                                                                             dep_irrf
-                                                               from bethadba.dependentes_func) as thd
-                                                      group by i_dependentes
-                                                     having total > 1)));
+delete bethadba.dependentes_func
+  from (select i_dependentes,
+	   		   row_number() over (partition by i_dependentes order by i_dependentes) as rn
+		  from (select distinct i_dependentes, dep_irrf
+		  		  from bethadba.dependentes_func df) as thd
+		 order by i_dependentes) as tab
+ where tab.rn > 1
+   and dependentes_func.i_dependentes = tab.i_dependentes;
 
 commit;
 
@@ -1059,94 +795,99 @@ update bethadba.atos
 
 commit;
 
+-- FOLHA - Validação - 160
+
+-- Atualiza conta_licpremio para 'S' para funcionários com tipo_func = 'F' e conta_licpremio = 'N' e possui vinculo com adicionais
+
+update bethadba.funcionarios f
+   set conta_licpremio = 'S'
+  from bethadba.hist_funcionarios hf
+  join bethadba.vinculos v
+    on hf.i_vinculos = v.i_vinculos
+ where v.gera_licpremio = 'S'
+   and f.tipo_func = 'F'
+   and f.i_entidades = hf.i_entidades
+   and f.i_funcionarios = hf.i_funcionarios
+   and f.conta_licpremio = 'N';
+
+commit;
+
 -- FOLHA - Validação - 161
 
-update bethadba.cargos_organogramas
-   set i_organogramas = sintetico
-  from (select hf.i_entidades,
-               hf.i_funcionarios,
-               hf.i_config_organ,
-               hf.i_organogramas,              
-               hc.i_cargos,
-               num_sintetico = (select no3.tot_digitos
-                                  from bethadba.niveis_organ no3
-                                 where no3.i_config_organ = hf.i_config_organ
-                                   and no3.i_niveis_organ = organogramas.nivel  - 1),
-               sintetico = left(hf.i_organogramas, num_sintetico) + repeat('0', (select no3.num_digitos
-                                                                                   from bethadba.niveis_organ no3
-                                                                                  where no3.i_config_organ = hf.i_config_organ
-                                                                                    and no3.i_niveis_organ = organogramas.nivel))
-          from bethadba.funcionarios,
-               bethadba.hist_cargos hc,
-               bethadba.hist_funcionarios hf,
-               (select entidade = f.i_entidades,
-                       funcionario = f.i_funcionarios,
-                       dataAlteracao = hf.dt_alteracoes,
-                       origemHistorico = 'FUNCIONARIO'
-                  from bethadba.funcionarios f 
-                  join bethadba.hist_funcionarios hf
-                    on (f.i_entidades = hf.i_entidades
-                   and f.i_funcionarios = hf.i_funcionarios
-                   and hf.dt_alteracoes <= isnull((select first afast.dt_afastamento
-                                                     from bethadba.afastamentos afast
-                                                    where afast.i_entidades = f.i_entidades
-                                                      and afast.i_funcionarios = f.i_funcionarios
-                                                      and afast.i_tipos_afast = (select tipos_afast.i_tipos_afast
-                                                                                   from bethadba.tipos_afast 
-                                                                                  where tipos_afast.i_tipos_afast = afast.i_tipos_afast
-                                                                                    and tipos_afast.classif = 9)), date('2999-12-31')))
-                union
-                select entidade = f.i_entidades,
-                       funcionario = f.i_funcionarios,
-                       dataAlteracao = hc.dt_alteracoes ,
-                       origemHistorico = 'CARGO'
-                  from bethadba.funcionarios f
-                  join bethadba.hist_cargos hc
-                    on (f.i_entidades = hc.i_entidades
-                   and f.i_funcionarios = hc.i_funcionarios
-                   and hc.dt_alteracoes <= isnull((select first afast.dt_afastamento
-                                                     from bethadba.afastamentos afast
-                                                    where afast.i_entidades = f.i_entidades
-                                                      and afast.i_funcionarios = f.i_funcionarios
-                                                      and afast.i_tipos_afast = (select tipos_afast.i_tipos_afast
-                                                                                   from bethadba.tipos_afast 
-                                                                                  where tipos_afast.i_tipos_afast = afast.i_tipos_afast
-                                                                                    and tipos_afast.classif = 9)), date('2999-12-31')))
-                 where not exists (select distinct 1
-                                     from bethadba.hist_funcionarios hf
-                                    where hf.i_entidades = hc.i_entidades
-                                      and hf.i_funcionarios = hc.i_funcionarios
-                                      and hf.dt_alteracoes = hc.dt_alteracoes)
-                 order by dataAlteracao) as tabAlt,
-               bethadba.cargos,
-               bethadba.tipos_cargos,
-               bethadba.organogramas
-         where funcionarios.i_entidades = tabAlt.entidade
-           and funcionarios.i_funcionarios = tabAlt.funcionario
-           and cargos.i_cargos = hc.i_cargos
-           and cargos.i_entidades = hc.i_entidades
-           and funcionarios.i_funcionarios = hf.i_funcionarios
-           and funcionarios.i_entidades = hf.i_entidades
-           and hf.i_funcionarios = hc.i_funcionarios
-           and hf.i_entidades = hc.i_entidades
-           and hf.i_config_organ = organogramas.i_config_organ
-           and hf.i_organogramas = organogramas.i_organogramas
-           and hf.dt_alteracoes = bethadba.dbf_GetDataHisFun(hf.i_entidades, hf.i_funcionarios, dataAlteracao)
-           and hc.dt_alteracoes = bethadba.dbf_GetDataHisCar(hc.i_entidades, hc.i_funcionarios, dataAlteracao)
-           and funcionarios.tipo_func = 'F'
-           and exists (select 1
-                         from bethadba.cargos_organogramas co
-                        where co.i_entidades = hf.i_entidades
-                          and co.i_cargos = hc.i_cargos)
-           and not exists (select 1
-                             from bethadba.cargos_organogramas co
-                            where co.i_entidades = hf.i_entidades
-                              and co.i_cargos = hc.i_cargos
-                              and co.i_organogramas = sintetico)) as sintetico
- where cargos_organogramas.i_entidades = sintetico.i_entidades
-   and cargos_organogramas.i_cargos = sintetico.i_cargos
-   and cargos_organogramas.i_organogramas = sintetico.i_organogramas
-   and cargos_organogramas.i_config_organ = sintetico.i_config_organ;
+-- Insere o organograma sintético do organograma do funcionário na tabela de controle de vagas do cargo
+insert into bethadba.cargos_organogramas (i_entidades, i_cargos, i_config_organ, i_organogramas, qtd_vagas)
+select distinct hf.i_entidades,
+       hc.i_cargos,
+       hf.i_config_organ,
+       sintetico,
+       1
+  from bethadba.funcionarios,
+       bethadba.hist_cargos hc,
+       bethadba.hist_funcionarios hf,
+       (select entidade = f.i_entidades,
+               funcionario = f.i_funcionarios,
+               dataAlteracao = hf.dt_alteracoes,
+               origemHistorico = 'FUNCIONARIO'
+          from bethadba.funcionarios f 
+          join bethadba.hist_funcionarios hf
+            on (f.i_entidades = hf.i_entidades
+           and f.i_funcionarios = hf.i_funcionarios
+           and hf.dt_alteracoes <= isnull((select first afast.dt_afastamento
+                                             from bethadba.afastamentos afast
+                                            where afast.i_entidades = f.i_entidades
+                                              and afast.i_funcionarios = f.i_funcionarios
+                                              and afast.i_tipos_afast = (select tipos_afast.i_tipos_afast
+                                                                           from bethadba.tipos_afast 
+                                                                          where tipos_afast.i_tipos_afast = afast.i_tipos_afast
+                                                                            and tipos_afast.classif = 9)), date('2999-12-31')))
+        union
+         select entidade = f.i_entidades,
+                funcionario = f.i_funcionarios,
+                dataAlteracao = hc.dt_alteracoes ,
+                origemHistorico = 'CARGO'
+           from bethadba.funcionarios f 
+           join bethadba.hist_cargos hc
+             on (f.i_entidades = hc.i_entidades
+            and f.i_funcionarios = hc.i_funcionarios
+            and hc.dt_alteracoes <= isnull((select first afast.dt_afastamento
+                                              from bethadba.afastamentos afast
+                                             where afast.i_entidades = f.i_entidades
+                                               and afast.i_funcionarios = f.i_funcionarios
+                                               and afast.i_tipos_afast = (select tipos_afast.i_tipos_afast
+                                                                            from bethadba.tipos_afast 
+                                                                           where tipos_afast.i_tipos_afast = afast.i_tipos_afast
+                                                                             and tipos_afast.classif = 9)), date('2999-12-31')))
+          where not exists (select distinct 1
+                              from bethadba.hist_funcionarios hf
+                             where hf.i_entidades = hc.i_entidades
+                               and hf.i_funcionarios = hc.i_funcionarios
+                               and hf.dt_alteracoes = hc.dt_alteracoes)
+         order by dataAlteracao) as tabAlt,
+        bethadba.cargos cargos,
+        bethadba.tipos_cargos tipos_cargos,
+        bethadba.organogramas organogramas
+  where funcionarios.i_entidades = tabAlt.entidade
+    and funcionarios.i_funcionarios = tabAlt.funcionario
+    and cargos.i_cargos = hc.i_cargos
+    and cargos.i_entidades = hc.i_entidades
+    and funcionarios.i_funcionarios = hf.i_funcionarios
+    and funcionarios.i_entidades = hf.i_entidades
+    and hf.i_funcionarios = hc.i_funcionarios
+    and hf.i_entidades = hc.i_entidades
+    and hf.i_config_organ = organogramas.i_config_organ
+    and hf.i_organogramas = organogramas.i_organogramas
+    and hf.dt_alteracoes = bethadba.dbf_GetDataHisFun(hf.i_entidades, hf.i_funcionarios, dataAlteracao)
+    and hc.dt_alteracoes = bethadba.dbf_GetDataHisCar(hc.i_entidades, hc.i_funcionarios, dataAlteracao)
+    and funcionarios.tipo_func = 'F'
+    and exists (select 1
+                  from bethadba.cargos_organogramas co
+                 where co.i_entidades = hf.i_entidades
+                   and co.i_cargos = hc.i_cargos)
+    and not exists (select 1
+                      from bethadba.cargos_organogramas co
+                     where co.i_entidades = hf.i_entidades
+                       and co.i_cargos = hc.i_cargos
+                       and co.i_organogramas = sintetico);
 
 commit;
 
@@ -1205,23 +946,6 @@ update bethadba.vinculos v
 
 commit;
 
--- FOLHA - Validação - 165
-
--- Atualiza os tipos de processo para 11 (Rescisão) onde necessário
-
-update bethadba.dados_calc
-  join bethadba.movimentos m
-    on dc.i_entidades = m.i_entidades
-   and dc.i_funcionarios = m.i_funcionarios
-   and dc.i_tipos_proc = m.i_tipos_proc
-   and dc.i_processamentos = m.i_processamentos
-   and dc.i_competencias = m.i_competencias
-   set i_tipos_proc = 11
- where dc.i_tipos_proc not in (11, 42)
-   and m.mov_resc = 'S';
-
-commit;
-
 -- FOLHA - Validação - 166
 
 -- Atualizar o CPF com o dígito correto
@@ -1254,18 +978,6 @@ update bethadba.hist_pessoas_fis as hpf
 
 commit;
 
--- FOLHA - Validação - 169
-
--- Atualiza a data da primeira CNH para ser igual a data de emissão da CNH quando a data da primeira CNH for maior que a data de emissão da CNH e ambas as datas não forem nulas
-
-update bethadba.pessoas_fis_compl pfc
-   set dt_primeira_cnh = dt_emissao_cnh
- where pfc.dt_primeira_cnh > pfc.dt_emissao_cnh 
-   and pfc.dt_primeira_cnh is not null
-   and pfc.dt_emissao_cnh is not null;
-
-commit;
-
 -- FOLHA - Validação - 17
 
 -- Atualiza os atos repetidos para evitar duplicidade, adicionando o i_atos ao nome do ato
@@ -1282,18 +994,6 @@ update bethadba.atos
                                                    and atos.i_tipos_atos = b.i_tipos_atos) > 1));
 
 -- Substituir o update atual pela procedure procedure_unificacao_atos.sql
-
-commit;
-
--- FOLHA - Validação - 170
-
--- Atualiza a data de vencimento da CNH para um dia após a data de emissão da CNH
-
-update bethadba.pessoas_fis_compl pfc 
-   set dt_vencto_cnh = DATEADD(DAY, 1, dt_emissao_cnh)
- where pfc.dt_vencto_cnh < pfc.dt_emissao_cnh 
-   and pfc.dt_vencto_cnh is not null
-   and pfc.dt_emissao_cnh is not null;
 
 commit;
 
@@ -1436,23 +1136,31 @@ select r.i_entidades,
 
 commit;
 
--- FOLHA - Validação - 176
+-- FOLHA - Validação - 173
 
--- Atualizar a categoria_esocial do vinculo do conselheiro para 771
+-- Atualiza os registros da tabela afastamentos deixando nulo a coluna dt_ultimo_dia
 
-update bethadba.vinculos
-   set categoria_esocial = '771'
- where i_vinculos in (select hf.i_vinculos
-                        from bethadba.hist_funcionarios as hf
-                        join bethadba.funcionarios as f
-                          on hf.i_entidades = f.i_entidades
-                         and hf.i_funcionarios = f.i_funcionarios
-                       where f.tipo_func = 'A' 
-                         and f.conselheiro_tutelar = 'S'
-                         and hf.i_vinculos is not null
-                         and hf.i_vinculos in (select i_vinculos
-                                                 from bethadba.vinculos
-                                                where categoria_esocial <> '771'));
+update bethadba.afastamentos
+   set dt_ultimo_dia = null
+ where dt_ultimo_dia is not null
+   and i_tipos_afast in (select a.i_tipos_afast
+                           from bethadba.afastamentos a
+                           join bethadba.tipos_afast ta
+                             on a.i_tipos_afast = ta.i_tipos_afast
+                          where ta.classif = 8
+                            and a.dt_ultimo_dia is not null
+                            and exists (select first 1
+                                          from bethadba.rescisoes r
+                                          join bethadba.motivos_resc mr
+                                            on r.i_motivos_resc = mr.i_motivos_resc
+                                          join bethadba.tipos_afast ta2
+                                            on mr.i_tipos_afast = ta2.i_tipos_afast
+                                         where r.i_entidades = a.i_entidades
+                                           and r.i_funcionarios = a.i_funcionarios
+                                           and r.dt_canc_resc is null
+                                           and r.i_motivos_apos is null
+                                           and r.dt_rescisao = a.dt_afastamento
+                                           and ta2.classif = 8));
 
 commit;
 
@@ -1474,29 +1182,26 @@ update bethadba.vinculos v
 
 commit;
 
--- FOLHA - Validação - 18
-
--- Atualiza os CBO's nulos para um valor padrão (exemplo: 312320) para evitar problemas de integridade referencial
-
-update bethadba.cargos
-   set i_cbo = 312320 
- where i_cargos = 9999;
-
-commit;
-
 -- FOLHA - Validação - 180
 
 -- Remove a configuração de férias dos cargos com classificação comissionado ou não classificado
 
-update bethadba.cargos_compl cc
-   set i_config_ferias = null
+update bethadba.cargos_compl
+   set cargos_compl.i_config_ferias = null
   from bethadba.cargos c
   join bethadba.tipos_cargos tc
-    on c.i_tipos_cargos = tc.i_tipos_cargos
- where c.i_entidades = cc.i_entidades
-   and c.i_cargos = cc.i_cargos
+    on c.i_tipos_cargos = tc.i_tipos_cargos,
+       bethadba.hist_cargos as hc
+ where c.i_entidades = cargos_compl.i_entidades
+   and c.i_cargos = cargos_compl.i_cargos
+   and c.i_entidades = hc.i_entidades
+   and c.i_cargos = hc.i_cargos
    and tc.classif in (0, 2)
-   and cc.i_config_ferias is not null;
+   and cargos_compl.i_config_ferias is not null
+   and not exists(select 1
+   			    	      from bethadba.periodos
+               	   where periodos.i_entidades = hc.i_entidades
+                 	   and periodos.i_funcionarios = hc.i_funcionarios);
 
 commit;
 
@@ -1505,27 +1210,24 @@ commit;
 -- Inserir as caracteristicas que não existem na tabela de caracteristicas CFG
 
 insert into bethadba.funcionarios_caract_cfg (i_caracteristicas, ordem, permite_excluir, dt_expiracao)
-select fpa.i_caracteristicas,
-       (select coalesce(max(ordem), 0) + row_number() over (order by fpa.i_caracteristicas)
-          from bethadba.funcionarios_caract_cfg) as ordem,
+select distinct fpa.i_caracteristicas,
+       (select coalesce(max(ordem), 0) + 1
+          from bethadba.funcionarios_caract_cfg) as ordemNova,
        'S',
-       to_date('31/12/9999','dd/mm/yyyy')
+       CAST('2999-12-31' AS DATE)
   from bethadba.funcionarios_prop_adic fpa
  where fpa.i_caracteristicas not in (select i_caracteristicas
                                        from bethadba.funcionarios_caract_cfg);
 
 commit;
 
--- FOLHA - Validação - 185
+-- FOLHA - Validação - 182
 
--- Atualizar a descrição do tipo de cargo duplicada inserindo o prefixo 'i_tipos_cargos - ' antes da descrição original
+-- Atualiza a data final da vigência para 2100-01-01 onde estiver maior que essa data e não for nula
 
-update bethadba.tipos_cargos as a
-   set descricao = a.i_tipos_cargos || ' - ' || a.descricao
- where exists (select first 1
- 				         from bethadba.tipos_cargos as b
-                where b.descricao = a.descricao
-                  and b.i_tipos_cargos <> a.i_tipos_cargos);
+update bethadba.bases_calc_outras_empresas
+   set dt_vigencia_fin = '2099-12-31'
+ where dt_vigencia_fin > '2100-01-01';
 
 commit;
 
@@ -1650,17 +1352,6 @@ commit;
 
 commit;
 
--- FOLHA - Validação - 19
-
--- Atualiza a categoria eSocial nulo para um valor padrão (exemplo: 105) para evitar problemas de integridade referencial
-
-update bethadba.vinculos
-   set categoria_esocial = 105
- where categoria_esocial is null
-   and i_vinculos = 3;
-
-commit;
-
 -- FOLHA - Validação - 192
 
 -- Atualizar o campo num_reg para que o mesmo não seja duplicado na tabela pessoas_fis_compl
@@ -1694,6 +1385,31 @@ update bethadba.pessoas_fis_compl
                                              from bethadba.pessoas_fis_compl B
                                             where A.i_pessoas <> B.i_pessoas
                                               and numeroNascimentoB = numeroNascimento)) as subquery);
+
+commit;
+
+-- FOLHA - Validação - 194
+
+-- Exclui os registros de parâmetros de relatório que estejam com tipo de inscrição
+-- 'J' e sem pessoa jurídica associada ou com tipo de inscrição 'F' e sem pessoa física associada
+
+update bethadba.parametros_rel pr
+   set pr.nome_resp = (select nome
+   						           from bethadba.pessoas_nomes
+   						          where i_pessoas = (select top 1 e.i_pessoas
+                                   					 from bethadba.hist_entidades_compl e
+					                                  where e.i_entidades = pr.i_entidades
+                                              and i_pessoas is not null
+                    					              order by i_competencias desc))
+ where pr.i_parametros_rel = 2
+   and ((pr.tipo_insc = 'J'
+   and isnull((select first i_pessoas
+                 from bethadba.pessoas
+                where SIMILAR(nome, pr.nome_resp) >= 80),0) = 0)
+    or (pr.tipo_insc = 'F'
+   and isnull((select first i_pessoas
+                 from bethadba.pessoas
+                where SIMILAR(nome, pr.nome_resp) >= 80),0) = 0));
 
 commit;
 
@@ -2253,20 +1969,6 @@ end for;
 
 commit;
 
--- FOLHA - Validação - 24
-
--- Atualiza a categoria eSocial nulo para um valor padrão (exemplo: '38' para aposentadoria, exceto por invalidez) para evitar problemas de integridade referencial
-                
-update bethadba.motivos_apos
-   set categoria_esocial = '38' //Aposentadoria, exceto por ivalidez
- where i_motivos_apos in (1,2,3,4,8,9);
-
-update bethadba.motivos_apos
-   set categoria_esocial = '39' //Aposentadoria por ivalidez
- where i_motivos_apos in (5,6,7);
-
-commit;
-
 -- FOLHA - Validação - 25
 
 -- Atualiza os históricos salariais com salário zerado ou nulo para um valor mínimo (exemplo: 0.01) para evitar problemas de cálculos futuros
@@ -2375,34 +2077,6 @@ end;
 
 commit;
 
--- FOLHA - Validação - 27
-
--- Atualiza as movimentações de pessoal repetidos para evitar duplicidade, adicionando o i_tipos_movpes ao nome do tipo de movimentação
-
-update bethadba.tipos_movpes
-   set tipos_movpes.descricao = tipos_movpes.i_tipos_movpes || '-' || tipos_movpes.descricao 
- where tipos_movpes.i_tipos_movpes in(select i_tipos_movpes
-                                        from bethadba.tipos_movpes
-                                       where (select count(i_tipos_movpes)
-                                                from bethadba.tipos_movpes t
-                                               where trim(t.descricao) = trim(tipos_movpes.descricao)) > 1);
-
-commit;
-
--- FOLHA - Validação - 28
-
--- Atualiza os tipos de afastamentos repetidos para evitar duplicidade, adicionando o i_tipos_afast ao nome do tipo de afastamento
-
-update bethadba.tipos_afast
-   set tipos_afast.descricao = tipos_afast.i_tipos_afast || '-' || tipos_afast.descricao
- where tipos_afast.i_tipos_afast in (select i_tipos_afast
-                                       from bethadba.tipos_afast
-                                      where (select count(i_tipos_afast)
-                                               from bethadba.tipos_afast as t
-                                              where trim(t.descricao) = trim(tipos_afast.descricao)) > 1);
-
-commit;
-
 -- FOLHA - Validação - 29
 
 -- Atualiza os históricos de funcionários com data de alteração maior que a data de rescisão, ajustando a data de alteração para um minuto após a última alteração ou para o primeiro dia do mês da data de rescisão se não houver alterações anteriores
@@ -2471,20 +2145,6 @@ end;
 
 commit;
 
--- FOLHA - Validação - 3
-
--- Atualiza a data de vencimento da CNH para ser igual à data da primeira habilitação se a data de vencimento for menor que a data da primeira habilitação
-
-update bethadba.pessoas_fis_compl
-   set dt_vencto_cnh = dt_primeira_cnh
- where dt_vencto_cnh < dt_primeira_cnh;
- 
-update bethadba.hist_pessoas_fis
-   set dt_vencto_cnh = dt_primeira_cnh
- where dt_vencto_cnh < dt_primeira_cnh;
-
-commit;
-
 -- FOLHA - Validação - 30
 
 -- Alterar a data do campo hs.dt_alteracoes para um minuto após a última alteração dentro do mesmo mês da data do campo r.dt_rescisao sem gerar duplicidade
@@ -2532,28 +2192,34 @@ drop table minutos;
 
 commit;
 
--- FOLHA - Validação - 32
+-- FOLHA - Validação - 31
 
--- Atualiza a classificação dos tipos de afastamento para 2 (outros) onde a classificação é nula ou igual a 1
+-- Atualiza os históricos de cargos com data de alteração maior que a data de rescisão, ajustando a data de alteração para um minuto após a última alteração ou para o primeiro dia do mês da data de rescisão se não houver alterações anteriores
 
-update bethadba.tipos_afast
-   set classif = 2
- where classif is null
-    or classif = 1;
-
-commit;
-
--- FOLHA - Validação - 33
-
--- Atualiza os tipos de atos repetidos para evitar duplicidade, adicionando o i_tipos_atos ao nome do tipo de atos
-
-update bethadba.tipos_atos
-   set tipos_atos.nome = tipos_atos.i_tipos_atos || '-' || tipos_atos.nome
- where tipos_atos.i_tipos_atos in(select i_tipos_atos
-                                    from bethadba.tipos_atos
-                                   where (select count(i_tipos_atos)
-                                            from bethadba.tipos_atos t
-                                           where trim(t.nome) = trim(tipos_atos.nome)) > 1);
+for a1 as a2 cursor for
+    select
+        hs.i_funcionarios,
+        hs.i_entidades,
+        hs.dt_alteracoes,
+        r.dt_rescisao,
+        linha = row_number() over (order by hs.i_funcionarios),
+        dt_alteracoes_novo = dateadd(ss, -linha , date(STRING(r.dt_rescisao, ' ', substring(hs.dt_alteracoes, 12, 8)))),
+        xSQL = 'update bethadba.hist_cargos set dt_alteracoes = '''||dt_alteracoes_novo||''' where i_funcionarios = '||hs.i_funcionarios||' and i_entidades = '||hs.i_entidades||' and dt_alteracoes = '''||hs.dt_alteracoes||''';'
+    from bethadba.hist_cargos hs
+    inner join bethadba.rescisoes r on (hs.i_funcionarios = r.i_funcionarios and hs.i_entidades = r.i_entidades)
+    where hs.dt_alteracoes > STRING((select max(s.dt_rescisao)
+                                           from bethadba.rescisoes s
+                                           join bethadba.motivos_resc mr on(s.i_motivos_resc = mr.i_motivos_resc)
+                                           where s.i_funcionarios = r.i_funcionarios
+                                           and s.i_entidades = r.i_entidades
+                                           and s.dt_canc_resc is null
+                                           and s.dt_reintegracao is null
+                                           and mr.dispensados != 3), ' 23:59:59')
+    order by hs.i_funcionarios
+do
+    message xSQL ||' linha: '||linha to client;
+    execute immediate xSQL;
+end for;
 
 commit;
 
@@ -2579,6 +2245,15 @@ update bethadba.atos as a
     on (fa.i_atos = a.i_atos)
    set a.dt_publicacao = fa.dt_publicacao
  where fa.dt_publicacao < a.dt_publicacao;
+
+commit;
+
+-- FOLHA - Validação - 37
+
+-- Insere o tipo de afastamento 1 (Afastamento para Férias) na configuração de cancelamento de férias, garantindo que haja pelo menos um tipo de afastamento associado
+
+insert into bethadba.canc_ferias_afast (i_canc_ferias, i_tipos_afast)
+values (2, 1);
 
 commit;
 
@@ -2637,6 +2312,19 @@ update bethadba.cargos
 
 commit;
 
+-- FOLHA - Validação - 42
+
+-- Atualiza a data de término de vigência para 2099-01-01 onde a data de término de vigência é maior que 2099-01-01
+
+update bethadba.bases_calc_outras_empresas
+   set dt_vigencia_fin = '2099-01-01'
+ where i_pessoas in (select i_pessoas
+                       from bethadba.bases_calc_outras_empresas
+                      where dt_vigencia_fin > '2099-01-01')
+   and dt_vigencia_fin >'2099-01-01';
+
+commit;
+
 -- FOLHA - Validação - 45
 
 -- Altera a previdência federal para 'Sim' quando o histórico da matrícula não possuí nenhuma previdência marcada
@@ -2689,6 +2377,33 @@ commit;
 update bethadba.afastamentos
    set observacao = SUBSTR(observacao, 1, 150)
  where length(observacao) > 150;
+
+commit;
+
+-- FOLHA - Validação - 5
+
+-- Atualiza o grau do dependente para 5 (OUTROS) se o motivo de início do dependente não for um dos motivos válidos ou for nulo
+
+update bethadba.dependentes 
+   set grau = 5 
+ where grau = 10 
+   and mot_ini_depende not in (1,2,3,4,7,8) 
+    or mot_ini_depende is null;
+
+update bethadba.dependentes 
+   set grau = 2 
+ where grau = 10 
+   and mot_ini_depende in (7);
+
+update bethadba.dependentes 
+   set grau = 8 
+ where grau = 10 
+   and mot_ini_depende in (2);
+
+update bethadba.dependentes 
+   set grau = 1 
+ where grau = 10 
+   and mot_ini_depende in (1,2,3,4);
 
 commit;
 
@@ -2770,16 +2485,46 @@ update bethadba.hist_funcionarios,
 
 commit;
 
--- FOLHA - Validação - 59
+-- FOLHA - Validação - 60
 
--- Altera a previdência federal para 'Sim' e as demais para 'Não' quando o histórico da matrícula possuí mais de uma previdência marcada
+-- Atualiza a data de afastamento para um dia após a data de admissão do funcionário onde a data de afastamento é menor que a data de admissão
 
-update bethadba.hist_funcionarios
-   set prev_federal = 'S',
-       prev_estadual = 'N',
-       fundo_ass = 'N',
-       fundo_prev = 'N'
- where length(REPLACE(prev_federal || prev_estadual || fundo_ass || fundo_prev, 'N', '')) > 1;
+begin
+	declare w_dt_afastamento timestamp;
+   declare w_dt_ultimo_dia timestamp;
+   declare w_i_entidades integer;
+   declare w_i_funcionarios integer;
+   declare w_dt_admissao timestamp;
+   declare w_nova_data timestamp;
+	
+   llLoop: for ll as cur_01 dynamic scroll cursor for	
+      select (select dt_admissao
+                from bethadba.funcionarios
+               where i_funcionarios = a.i_funcionarios
+                 and i_entidades = a.i_entidades) as data_admissao,
+             dt_afastamento,
+             dt_ultimo_dia, 
+             i_entidades, 
+             i_funcionarios, 
+             i_tipos_afast
+        from bethadba.afastamentos as a
+       where a.dt_afastamento < data_admissao
+       order by a.i_funcionarios ASC
+   do
+      set w_dt_afastamento = dt_afastamento;
+      set w_dt_ultimo_dia = dt_ultimo_dia;
+      set w_i_entidades = i_entidades;
+      set w_i_funcionarios = i_funcionarios;
+      set w_dt_admissao = data_admissao;
+      set w_nova_data = dateadd(day, 1, w_dt_admissao);
+      
+   update bethadba.afastamentos as a
+      set dt_afastamento =  w_nova_data
+    where i_funcionarios = w_i_funcionarios
+      and dt_afastamento = w_dt_afastamento
+      and i_entidades = w_i_entidades
+   end for;
+end;
 
 commit;
 
@@ -2794,18 +2539,18 @@ update bethadba.dependentes
 
 commit;
 
--- FOLHA - Validação - 66
+-- FOLHA - Validação - 65
 
--- Atualiza horas mês para 220 quando zerado e não for tipo A
--- Considera que o mês tem 220 horas
- 
-update bethadba.hist_salariais  
-   set horas_mes = 220
-  from bethadba.funcionarios
- where cast(hist_salariais.horas_mes as integer) < 1
-   and hist_salariais.i_entidades = funcionarios.i_entidades
-   and hist_salariais.i_funcionarios = funcionarios.i_funcionarios
-   and tipo_func != 'A';
+-- Atualiza o valor do sub-teto para 99999 onde o valor é nulo, garantindo que todos os tipos administrativos tenham um valor definido para o sub-teto
+                
+update bethadba.hist_tipos_adm as hta
+   set hta.vlr_sub_teto = '99999'
+  from bethadba.entidades as e
+ where hta.i_tipos_adm = e.i_tipos_adm
+   and hta.i_competencias = (select max(x.i_competencias)
+                               from bethadba.hist_tipos_adm as x
+                              where x.i_tipos_adm = hta.i_tipos_adm
+                                and x.vlr_sub_teto is null);
 
 commit;
 
@@ -2834,6 +2579,30 @@ update bethadba.dependentes
    set pdep.dt_nascimento = p.dt_nascimento
  where dependentes.grau in (1, 6, 8, 11)
    and pdep.dt_nascimento < p.dt_nascimento;
+
+commit;
+
+-- FOLHA - Validação - 70
+
+-- Atualiza a data de fim do gozo das férias para um dia antes da data de rescisão para os funcionários que possuem férias com data de fim do gozo igual ou após a data da rescisão.
+
+update bethadba.ferias, bethadba.rescisoes
+   set ferias.dt_gozo_fin = (rescisoes.dt_rescisao - 1)
+ where ferias.i_entidades = rescisoes.i_entidades
+   and ferias.i_funcionarios = rescisoes.i_funcionarios
+   and ferias.dt_gozo_fin >= rescisoes.dt_rescisao
+   and rescisoes.dt_canc_resc is null;
+
+commit;
+
+-- FOLHA - Validação - 71
+
+-- Atualiza a conta bancária dos funcionários com forma de pagamento 'R' (Crédito em conta) para a conta bancária correspondente na tabela pessoas_contas
+
+update bethadba.hist_funcionarios hf
+   set forma_pagto = 'D'
+ where forma_pagto = 'R'
+   and i_pessoas_contas is null;
 
 commit;
 
@@ -2946,6 +2715,19 @@ update bethadba.tipos_afast
 
 commit;
 
+-- FOLHA - Validação - 79
+
+-- Atualiza a data de rescisão para o dia seguinte ao término do gozo de férias
+
+update bethadba.rescisoes, bethadba.ferias
+   set bethadba.rescisoes.dt_rescisao = dateadd(day, 1, dt_gozo_fin)
+ where bethadba.ferias.i_entidades = rescisoes.i_entidades
+   and bethadba.ferias.i_funcionarios = rescisoes.i_funcionarios
+   and bethadba.ferias.dt_gozo_fin >= rescisoes.dt_rescisao
+   and rescisoes.dt_canc_resc is null;
+
+commit;
+
 -- FOLHA - Validação - 8
 
 -- Atualiza os CPF's repetidos para nulo, mantendo apenas o maior i_pessoas
@@ -2970,17 +2752,6 @@ commit;
 update bethadba.periodos_ferias
    set observacao = null
  where length(observacao) > 50;
-
-commit;
-
--- FOLHA - Validação - 81
-
--- Atualiza a inscrição municipal para '0' onde o tipo de pessoa é 'J' e a inscrição municipal tem mais de 9 dígitos
-
-update bethadba.pessoas
-   set inscricao_municipal = '0'
- where tipo_pessoa = 'J'
-   and length(inscricao_municipal) > 9;
 
 commit;
 
@@ -3100,6 +2871,20 @@ update bethadba.locais_mov
 
 commit;
 
+-- FOLHA - Validação - 94
+
+-- Atualiza o campo prev_federal para 'S' e fundo_prev para 'N' para os vínculos empregatícios CLT que não possuem opção federal marcada
+
+update bethadba.hist_funcionarios 
+ inner join bethadba.vinculos v
+    on (hist_funcionarios.i_vinculos = v.i_vinculos)
+   set prev_federal = 'S', fundo_prev = 'N'
+ where hist_funcionarios.i_vinculos = v.i_vinculos
+   and v.tipo_vinculo = 1
+   and hist_funcionarios.prev_federal = 'N';
+
+commit;
+
 -- FOLHA - Validação - 96
 
 -- Insere um responsável legal para o beneficiário menor de idade
@@ -3152,6 +2937,19 @@ drop table #duplicadas;
 
 commit;
 
+-- PONTO - Validação - 2
+
+-- Atualiza as descrições repetidas para que sejam únicas
+
+update bethadba.turmas
+   set descricao = i_turmas || ' - ' || descricao
+ where exists (select 1 
+                 from bethadba.turmas t2
+                where t1.descricao = t2.descricao
+                  and t1.i_turmas <> t2.i_turmas);
+
+commit;
+
 -- PONTO - Validação - 3
 
 -- Trunca a descrição do motivo de alteração do ponto para 30 caracteres
@@ -3159,25 +2957,6 @@ commit;
 update bethadba.motivos_altponto
    set descricao = left(descricao, 30)
  where length(descricao) > 30;
-
-commit;
-
--- RH - Validação - 17
-
--- Atualiza os candidatos que não possuem área de atuação para a área de atuação padrão (1)
-
-update bethadba.candidatos
-   set i_areas_atuacao = 1
- where i_areas_atuacao is null;
-
-commit;
-
--- RH - Validação - 18
-
--- Inserir os dados na tabela planos_saude_tabelas_faixas
-
-INSERT INTO bethadba.planos_saude_tabelas_faixas (i_pessoas,i_entidades,i_planos_saude,i_tabelas,i_sequencial,idade_ini,idade_fin,vlr_plano)
-VALUES (1, 1, 1, 1, 1, 0, 17, 100.00);
 
 commit;
 
@@ -3189,6 +2968,20 @@ update bethadba.planos_saude_tabelas_faixas
    set idade_ini = 0, idade_fin = 100
  where idade_ini is null
     or idade_fin is null;
+
+commit;
+
+-- RH - Validação - 20
+
+-- Ajustar as datas de ausência para evitar sobreposição
+
+update bethadba.ausencias a1
+   set a1.dt_ultimo_dia = coalesce(dateadd(day, -1, a2.dt_ausencia), a1.dt_ultimo_dia)
+  from bethadba.ausencias a2
+ where (a1.dt_ausencia between a2.dt_ausencia and a2.dt_ultimo_dia or a1.dt_ultimo_dia between a2.dt_ausencia and a2.dt_ultimo_dia)
+   and (a1.dt_ausencia <> a2.dt_ausencia or a1.dt_ultimo_dia <> a2.dt_ultimo_dia)
+   and a1.i_funcionarios = a2.i_funcionarios
+   and a1.i_entidades = a2.i_entidades;
 
 commit;
 

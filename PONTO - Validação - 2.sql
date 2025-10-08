@@ -17,5 +17,5 @@ update bethadba.turmas
    set descricao = i_turmas || ' - ' || descricao
  where exists (select 1 
                  from bethadba.turmas t2
-                where t1.descricao = t2.descricao
-                  and t1.i_turmas <> t2.i_turmas);
+                where turmas.descricao = t2.descricao
+                  and turmas.i_turmas <> t2.i_turmas);
