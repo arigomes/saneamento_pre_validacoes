@@ -61,3 +61,7 @@ SELECT t.i_entidades,
   FROM tabTemp as t
  WHERE ExisteConcomitante = 'S'
  ORDER BY t.i_entidades, t.i_funcionarios, t.dataInicioConcomitante;
+
+-- CORREÇÃO 00
+-- Ajuste de Afastamentos Concomitantes para o mesmo funcionário e mesma entidade
+

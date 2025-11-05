@@ -14,6 +14,8 @@ update bethadba.dependentes
    set mot_ini_depende = case
                             when grau = 1 then 1
                             when grau = 2 then 7
+                            when grau = 10 then 9
+                            when grau = 9 then 8
+                            when grau = 3 then 9
                          end
- where grau in (1, 2)
-   and mot_ini_depende is null;
+ where mot_ini_depende is null;

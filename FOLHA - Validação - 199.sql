@@ -58,8 +58,6 @@ select hs.i_entidades,
  group by hs.i_entidades, hs.i_niveis, hc.i_cargos, hcc.i_niveis
  order by hs.i_entidades, hc.i_cargos, hs.i_niveis;
 
-commit;
-
 update bethadba.hist_salariais,
 	   cnv_ajuste_199 
    set hist_salariais.dt_alteracoes = dt_alteracao_cargo
@@ -92,8 +90,6 @@ select hs.i_entidades,
  group by hs.i_entidades, hs.i_niveis, hc.i_cargos, hcc.i_niveis
  order by hs.i_entidades, hc.i_cargos, hs.i_niveis;
  
-commit;
-
 update cnv_ajuste_199,
 	   bethadba.hist_cargos_compl as hcc
    set hcc.dt_alteracoes = menor_dt_alteracao_salario 
@@ -106,8 +102,6 @@ update cnv_ajuste_199,
 										   where a.i_entidades = hcc.i_entidades
 											 and a.i_cargos = hcc.i_cargos
 											 and a.i_niveis = hcc.i_niveis);
-
-commit;
 
 update bethadba.hist_salariais,
 	   cnv_ajuste_199 
@@ -144,8 +138,6 @@ select a.i_entidades,
    and c.i_niveis = b.nivel_salario
    and c.dt_alteracoes = menor_dt_alteracao_salario);
 
-commit;
- 
 update bethadba.hist_niveis
    set dt_alteracoes = (select min(a.dt_alteracoes) -1
 						  from bethadba.hist_cargos_compl as a
@@ -173,8 +165,6 @@ update bethadba.hist_clas_niveis
    		  from bethadba.hist_niveis as a
    		 where a.i_entidades = hist_clas_niveis.i_entidades
            and a.i_niveis = hist_clas_niveis.i_niveis) < hist_clas_niveis.dt_alteracoes;
-
-commit;
 
 -- OBS: COMO A VALIDAÇÃO 199 INSERE INFORMAÇÕES NA bethadba.hist_cargos_compl, FAZ-SE NECESSÁRIO APÓS RODAR ELA EFETUAR AS DUAS VALIDAÇÕES ATERIORES E SE RETORNAR 
 -- INFORMAÇÕES NAS VALIDAÇÕES 189 E 198, RODAR NOVAMENTE E QUANTAS VEZES FOR NECESSÁRIO ESTES COMANDOS DE AJUSTE

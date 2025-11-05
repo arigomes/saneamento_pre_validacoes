@@ -58,7 +58,6 @@ select niveis.i_entidades,
           from bethadba.hist_cargos_compl hcc,
                bethadba.hist_niveis n
          where n.i_entidades = hcc.i_entidades
-           and n.i_entidades in (1)
            and n.i_niveis = hcc.i_niveis
            and dt_alteracao_cargos < (select MIN(dt_alteracoes)
                                         from bethadba.hist_niveis n2

@@ -7,4 +7,7 @@ select i_locais_aval
 
 
 -- CORREÇÃO
-
+-- Atualiza os locais de avaliação que não possuem bloco para o bloco padrão (1)
+update bethadba.locais_aval
+   set bloco = 1
+ where bloco is null;

@@ -14,13 +14,13 @@ select a.i_funcionarios,
 -- CORREÇÃO
 -- Atualiza a data do afastamento para o dia seguinte ao término da falta para os funcionários que possuem afastamentos concomitantes com faltas
 
-update bethadba.afastamentos as a
-   set a.dt_afastamento = DATEADD(dd, 1, b.dt_inicial)
-  from bethadba.faltas as b
- where a.dt_afastamento between b.dt_inicial and b.dt_ultimo_dia
+update bethadba.afastamentos as b
+   set b.dt_afastamento = DATEADD(dd, 1, a.dt_inicial)
+  from bethadba.faltas as a
+ where a.dt_inicial between b.dt_afastamento and b.dt_ultimo_dia
    and a.i_funcionarios = b.i_funcionarios
    and a.i_entidades = b.i_entidades
    and not exists (select 1
                      from bethadba.afastamentos as a2
-      		        where a2.i_funcionarios = a.i_funcionarios
-                      and a2.dt_afastamento = DATEADD(dd, 1, b.dt_inicial));
+      		        where a2.i_funcionarios = b.i_funcionarios
+                      and a2.dt_afastamento = DATEADD(dd, 1, a.dt_inicial));

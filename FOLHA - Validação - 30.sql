@@ -65,3 +65,19 @@ update bethadba.hist_salariais hs
                         and mr.dispensados != 3), ' 23:59:59');
 
 drop table minutos;
+
+-- CORREÇÃO 2
+-- Deleta os registros que ainda permanecem com data maior que a data de rescisão
+delete bethadba.hist_salariais
+  from bethadba.rescisoes r
+ where hist_salariais.i_funcionarios = r.i_funcionarios
+   and hist_salariais.i_entidades = r.i_entidades
+   and hist_salariais.dt_alteracoes > STRING((select max(s.dt_rescisao) 
+                                    from bethadba.rescisoes s 
+                                    join bethadba.motivos_resc mr
+                                      on (s.i_motivos_resc = mr.i_motivos_resc)
+                                   where s.i_funcionarios = r.i_funcionarios 
+                                     and s.i_entidades = r.i_entidades
+                                     and s.dt_canc_resc is null
+                                     and s.dt_reintegracao is null
+                                     and mr.dispensados != 3), ' 23:59:59')
