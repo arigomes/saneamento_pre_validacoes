@@ -44,7 +44,6 @@ select 1,
        null,
        null
   from bethadba.processos_judiciais pj
- where pj.i_funcionarios not in (select i_funcionarios
-                                   from bethadba.processos_judic_pagamentos_encargos)
-   and pj.i_processos_judiciais not in (select i_processos_judiciais
-                                          from bethadba.processos_judic_pagamentos_encargos);
+ where not exists (select 1
+                   from bethadba.processos_judic_pagamentos_encargos pjpe where pj.i_funcionarios = pjpe.i_funcionarios
+                   and pj.i_processos_judiciais = pjpe.i_processos_judiciais);
