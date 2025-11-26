@@ -22,3 +22,14 @@ update bethadba.pessoas_fisicas
         					  		   from bethadba.pessoas_fisicas as pf
         					  		  where pf.cpf = pessoas_fisicas.cpf) > 1
 							  group by cpf) as maior);
+
+update bethadba.hist_pessoas_fis
+   set cpf = null
+ where i_pessoas in (select maior.numPessoa
+ 					   from (select max(i_pessoas) as numPessoa,
+ 					   			    cpf
+          					   from bethadba.hist_pessoas_fis
+          					  where (select count(distinct i_pessoas)
+        					  		   from bethadba.hist_pessoas_fis as pf
+        					  		  where pf.cpf = hist_pessoas_fis.cpf) > 1
+							  group by cpf) as maior);						  
