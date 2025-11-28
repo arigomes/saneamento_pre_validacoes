@@ -1,8 +1,9 @@
 -- VALIDAÇÃO 155
 -- Dependente sem motivo de inicio
 
-select i_pessoas, 
-       i_dependentes 
+select i_pessoas,
+       i_dependentes,
+       grau
   from bethadba.dependentes d
  where mot_ini_depende is null;
 
