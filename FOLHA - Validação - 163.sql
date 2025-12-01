@@ -18,6 +18,19 @@ select pj.i_entidades,
 update bethadba.processos_judic_compet
    set vlr_prev_oficial = 1;
 
+-- Insert para o relacionamento com a tabela processos_judic_pagamentos
+insert into bethadba.processos_judic_pagamentos
+      (i_entidades,i_funcionarios,i_processos_judiciais,i_competencias,i_receitas,outros_reclamantes)
+select pj.i_entidades,
+       pj.i_funcionarios,
+       pj.i_processos_judiciais,
+       pj.dt_final,
+       113851,
+      'N'
+  from bethadba.processos_judiciais pj
+ where pj.i_funcionarios not in (select i_funcionarios
+                                   from bethadba.processos_judic_pagamentos_encargos);   
+
 -- Insert para o relacionamento com a tabela processos_judic_pagamentos_det
 insert into bethadba.processos_judic_pagamentos_det
       (i_entidades, i_funcionarios, i_processos_judiciais, i_competencias, i_tipos_proc, data_referencia)
